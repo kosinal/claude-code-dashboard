@@ -71,7 +71,7 @@ function isServerRunning() {
 function startServer() {
   const logPath = ${JSON.stringify(path.join(DASHBOARD_DIR, "server.log"))};
   const logFd = openSync(logPath, 'a');
-  const child = spawn(process.execPath, [serverEntry, '--no-hooks', '--port', String(port)], {
+  const child = spawn(process.execPath, [serverEntry, '--no-hooks', '--no-open', '--port', String(port)], {
     detached: true,
     stdio: ['ignore', logFd, logFd],
     env: { ...process.env },

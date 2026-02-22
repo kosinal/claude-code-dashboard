@@ -1,3 +1,4 @@
+import { exec } from "node:child_process";
 import { createStore } from "./state.ts";
 import { createServer } from "./server.ts";
 import { installHooks, removeHooks } from "./hooks.ts";
@@ -9,10 +10,12 @@ function parseArgs(argv: string[]): {
   port: number;
   command: string | null;
   noHooks: boolean;
+  noOpen: boolean;
 } {
   let port = DEFAULT_PORT;
   let command: string | null = null;
   let noHooks = false;
+  let noOpen = false;
 
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -24,6 +27,8 @@ function parseArgs(argv: string[]): {
       }
     } else if (arg === "--no-hooks") {
       noHooks = true;
+    } else if (arg === "--no-open") {
+      noOpen = true;
     } else if (arg === "install" || arg === "uninstall") {
       command = arg;
     } else if (arg === "--help" || arg === "-h") {
@@ -36,7 +41,7 @@ function parseArgs(argv: string[]): {
     }
   }
 
-  return { port, command, noHooks };
+  return { port, command, noHooks, noOpen };
 }
 
 function printHelp(): void {
@@ -51,6 +56,7 @@ Usage:
 Options:
   --port <number>   Port to use (default: ${DEFAULT_PORT})
   --no-hooks        Start server without installing hooks
+  --no-open         Don't open the browser on start
   -h, --help        Show this help message
 
 Quick mode (default):
@@ -63,8 +69,18 @@ Install mode:
 `.trim());
 }
 
+function openBrowser(url: string): void {
+  const cmd =
+    process.platform === "win32"
+      ? `start "" "${url}"`
+      : process.platform === "darwin"
+        ? `open "${url}"`
+        : `xdg-open "${url}"`;
+  exec(cmd, () => {});
+}
+
 function main(): void {
-  const { port, command, noHooks } = parseArgs(process.argv);
+  const { port, command, noHooks, noOpen } = parseArgs(process.argv);
 
   if (command === "install") {
     install(port);
@@ -127,11 +143,15 @@ function main(): void {
   writeLockFile();
 
   dashboard.listen(port, () => {
-    console.log(`Dashboard running at http://localhost:${port}`);
+    const url = `http://localhost:${port}`;
+    console.log(`Dashboard running at ${url}`);
     if (!noHooks) {
       console.log("Hooks installed in ~/.claude/settings.json");
     }
     console.log("Press Ctrl+C to stop");
+    if (!noOpen) {
+      openBrowser(url);
+    }
   });
 }
 
