@@ -27,6 +27,14 @@
     "monitoring"
   ],
   "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kosinal/claude-code-dashboard"
+  },
+  "homepage": "https://github.com/kosinal/claude-code-dashboard#readme",
+  "bugs": {
+    "url": "https://github.com/kosinal/claude-code-dashboard/issues"
+  },
   "publishConfig": {
     "access": "public"
   }

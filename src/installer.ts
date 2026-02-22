@@ -149,7 +149,7 @@ export function install(port: number): void {
     "The dashboard will auto-launch when a Claude Code session starts."
   );
   console.log(
-    "To uninstall: npx claude-code-dashboard uninstall"
+    "To uninstall: npx @kosinal/claude-code-dashboard uninstall"
   );
 }
 

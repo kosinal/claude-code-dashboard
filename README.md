@@ -13,7 +13,7 @@ Claude Code fires [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) 
 ## Quick start
 
 ```bash
-npx claude-code-dashboard
+npx @kosinal/claude-code-dashboard
 ```
 
 Open `http://localhost:8377` in your browser, then start a Claude Code session — it will appear on the dashboard automatically.
@@ -25,8 +25,8 @@ Press `Ctrl+C` to stop. Hooks are removed automatically on exit.
 ### Quick mode (default)
 
 ```bash
-npx claude-code-dashboard              # start on default port 8377
-npx claude-code-dashboard --port 9000  # use a custom port
+npx @kosinal/claude-code-dashboard              # start on default port 8377
+npx @kosinal/claude-code-dashboard --port 9000  # use a custom port
 ```
 
 Starts the server and installs temporary hooks into `~/.claude/settings.json`. Hooks are cleaned up when the dashboard stops.
@@ -34,8 +34,8 @@ Starts the server and installs temporary hooks into `~/.claude/settings.json`. H
 ### Install mode
 
 ```bash
-npx claude-code-dashboard install              # persistent install
-npx claude-code-dashboard install --port 9000  # custom port
+npx @kosinal/claude-code-dashboard install              # persistent install
+npx @kosinal/claude-code-dashboard install --port 9000  # custom port
 ```
 
 Copies the server to `~/.claude/dashboard/` and installs persistent hooks. The dashboard auto-launches in the background when any Claude Code session starts.
@@ -43,7 +43,7 @@ Copies the server to `~/.claude/dashboard/` and installs persistent hooks. The d
 ### Uninstall
 
 ```bash
-npx claude-code-dashboard uninstall
+npx @kosinal/claude-code-dashboard uninstall
 ```
 
 Removes hooks from `settings.json` and deletes `~/.claude/dashboard/`.
