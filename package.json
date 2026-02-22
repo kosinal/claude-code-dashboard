@@ -1,6 +1,7 @@
 {
   "name": "claude-code-dashboard",
   "version": "1.0.0",
+  "type": "module",
   "description": "Real-time browser dashboard for Claude Code session states",
   "bin": {
     "claude-code-dashboard": "./dist/bin.js"

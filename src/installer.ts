@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { installHooksWithCommand, removeHooks } from "./hooks.js";
+import { installHooksWithCommand, removeHooks } from "./hooks.ts";
 
 const DASHBOARD_DIR = path.join(os.homedir(), ".claude", "dashboard");
 const BIN_DIR = path.join(os.homedir(), ".claude", "bin");

@@ -1,7 +1,7 @@
-import { createStore } from "./state.js";
-import { createServer } from "./server.js";
-import { installHooks, removeHooks } from "./hooks.js";
-import { install, uninstall, writeLockFile, removeLockFile } from "./installer.js";
+import { createStore } from "./state.ts";
+import { createServer } from "./server.ts";
+import { installHooks, removeHooks } from "./hooks.ts";
+import { install, uninstall, writeLockFile, removeLockFile } from "./installer.ts";
 
 const DEFAULT_PORT = 8377;
 

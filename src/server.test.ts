@@ -1,8 +1,8 @@
 import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as http from "node:http";
-import { createStore } from "./state.js";
-import { createServer, type DashboardServer } from "./server.js";
+import { createStore } from "./state.ts";
+import { createServer, type DashboardServer } from "./server.ts";
 
 let dashboard: DashboardServer | null = null;
 

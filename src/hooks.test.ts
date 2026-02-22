@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { installHooks, removeHooks } from "./hooks.js";
+import { installHooks, removeHooks } from "./hooks.ts";
 
 let tmpDir: string;
 

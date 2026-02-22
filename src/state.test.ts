@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createStore } from "./state.js";
+import { createStore } from "./state.ts";
 
 describe("createStore", () => {
   it("starts empty", () => {

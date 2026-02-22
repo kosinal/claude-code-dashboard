@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getDashboardHtml } from "./dashboard.js";
+import { getDashboardHtml } from "./dashboard.ts";
 
 describe("getDashboardHtml", () => {
   const html = getDashboardHtml();
