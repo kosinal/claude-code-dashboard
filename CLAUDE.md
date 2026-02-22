@@ -22,5 +22,5 @@ npm test         # node --experimental-strip-types --test src/**/*.test.ts
 
 ## Linting
 
-Run `npm run lint` before committing. Use `npm run lint:fix` to auto-fix issues.
-Biome enforces `node:` protocol imports, `.ts` import extensions, and consistent formatting.
+- Run `npm run test` before committing.
+- Run `npm run lint` before committing. Use `npm run lint:fix` to auto-fix issues.
