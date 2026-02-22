@@ -1,5 +1,6 @@
 import { exec, spawn } from "node:child_process";
 import * as http from "node:http";
+import * as net from "node:net";
 import { createStore } from "./state.ts";
 import { createServer } from "./server.ts";
 import { installHooks, removeHooks } from "./hooks.ts";
@@ -135,6 +136,35 @@ function forceKill(pid: number): void {
   }
 }
 
+function waitForPortFree(port: number, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      const srv = net.createServer();
+      srv.once("error", () => {
+        if (Date.now() - start > timeoutMs) {
+          resolve(false);
+        } else {
+          setTimeout(check, 200);
+        }
+      });
+      srv.listen(port, "127.0.0.1", () => {
+        srv.close(() => resolve(true));
+      });
+    };
+    check();
+  });
+}
+
+async function tryShutdownByPort(port: number): Promise<boolean> {
+  try {
+    const { status } = await httpPost(port, "/api/shutdown");
+    return status === 200;
+  } catch {
+    return false;
+  }
+}
+
 async function stopServer(): Promise<boolean> {
   const lock = readLockFile();
   if (!lock) {
@@ -179,15 +209,27 @@ function main(): void {
   }
 
   if (command === "restart") {
-    const lock = readLockFile();
-    if (lock) {
-      stopServer().then(() => {
-        startDashboard(port, noHooks, noOpen);
-      });
-    } else {
-      console.log("No running dashboard found. Starting fresh...");
+    (async () => {
+      const lock = readLockFile();
+      if (lock) {
+        await stopServer();
+      } else {
+        const shutdown = await tryShutdownByPort(port);
+        if (shutdown) {
+          console.log("Shutting down dashboard via port...");
+        } else {
+          console.log("No running dashboard found. Starting fresh...");
+        }
+      }
+
+      const portFree = await waitForPortFree(port, 5000);
+      if (!portFree) {
+        console.error(`Error: Port ${port} is still in use after timeout. Try --port <number>`);
+        process.exit(1);
+      }
+
       startDashboard(port, noHooks, noOpen);
-    }
+    })();
     return;
   }
 
