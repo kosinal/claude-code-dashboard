@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -9,6 +10,8 @@ const CONFIG_PATH = path.join(DASHBOARD_DIR, "config.json");
 const SERVER_DIR = path.join(DASHBOARD_DIR, "server");
 const HOOK_SCRIPT_PATH = path.join(BIN_DIR, "claude-dashboard-hook.mjs");
 export const LOCK_PATH = path.join(DASHBOARD_DIR, "dashboard.lock");
+
+const PROTOCOL_SCHEME = "claude-dashboard";
 
 function getThisBundle(): string {
   // In bundled form, __filename points to dist/bin.js
@@ -167,6 +170,226 @@ main().catch(() => {});
   fs.writeFileSync(HOOK_SCRIPT_PATH, script);
 }
 
+// ---------------------------------------------------------------------------
+// Shortcut creation / removal
+// ---------------------------------------------------------------------------
+
+function getShortcutPath(): string | null {
+  const platform = process.platform;
+  if (platform === "win32") {
+    const appData = process.env.APPDATA;
+    if (!appData) return null;
+    return path.join(
+      appData,
+      "Microsoft",
+      "Windows",
+      "Start Menu",
+      "Programs",
+      "Claude Dashboard.url",
+    );
+  }
+  if (platform === "darwin") {
+    return path.join(os.homedir(), "Applications", "Claude Dashboard.webloc");
+  }
+  // Linux / other
+  return path.join(os.homedir(), ".local", "share", "applications", "claude-dashboard.desktop");
+}
+
+function createShortcuts(port: number): void {
+  const shortcutPath = getShortcutPath();
+  if (!shortcutPath) return;
+
+  fs.mkdirSync(path.dirname(shortcutPath), { recursive: true });
+
+  const platform = process.platform;
+  const url = `http://localhost:${port}`;
+
+  if (platform === "win32") {
+    const content = `[InternetShortcut]\nURL=${url}\nIconIndex=0\n`;
+    fs.writeFileSync(shortcutPath, content);
+  } else if (platform === "darwin") {
+    const content = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+      '<plist version="1.0">',
+      "<dict>",
+      "\t<key>URL</key>",
+      `\t<string>${url}</string>`,
+      "</dict>",
+      "</plist>",
+      "",
+    ].join("\n");
+    fs.writeFileSync(shortcutPath, content);
+  } else {
+    const content = [
+      "[Desktop Entry]",
+      "Version=1.1",
+      "Type=Link",
+      "Name=Claude Dashboard",
+      `URL=${url}`,
+      "Icon=text-html",
+      "",
+    ].join("\n");
+    fs.writeFileSync(shortcutPath, content);
+  }
+
+  console.log(`  Shortcut:      ${shortcutPath}`);
+}
+
+function removeShortcuts(): void {
+  const shortcutPath = getShortcutPath();
+  if (!shortcutPath) return;
+  try {
+    fs.unlinkSync(shortcutPath);
+  } catch {
+    // Ignore — may not exist
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Protocol handler registration / removal
+// ---------------------------------------------------------------------------
+
+function getProtocolDesktopPath(): string {
+  return path.join(
+    os.homedir(),
+    ".local",
+    "share",
+    "applications",
+    "claude-dashboard-handler.desktop",
+  );
+}
+
+function registerProtocol(port: number): void {
+  const platform = process.platform;
+  const url = `http://localhost:${port}`;
+
+  try {
+    if (platform === "win32") {
+      const regBase = `HKCU\\Software\\Classes\\${PROTOCOL_SCHEME}`;
+      execSync(`reg add "${regBase}" /ve /d "URL:Claude Dashboard" /f`, { stdio: "ignore" });
+      execSync(`reg add "${regBase}" /v "URL Protocol" /d "" /f`, { stdio: "ignore" });
+      execSync(`reg add "${regBase}\\shell\\open\\command" /ve /d "cmd /c start ${url}" /f`, {
+        stdio: "ignore",
+      });
+    } else if (platform === "darwin") {
+      // Create a minimal .app bundle that redirects to the dashboard URL
+      const appDir = path.join(
+        os.homedir(),
+        "Applications",
+        "Claude Dashboard Protocol.app",
+        "Contents",
+      );
+      const macOSDir = path.join(appDir, "MacOS");
+      fs.mkdirSync(macOSDir, { recursive: true });
+
+      const infoPlist = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+        '<plist version="1.0">',
+        "<dict>",
+        "\t<key>CFBundleIdentifier</key>",
+        "\t<string>com.claude-dashboard.protocol</string>",
+        "\t<key>CFBundleName</key>",
+        "\t<string>Claude Dashboard Protocol</string>",
+        "\t<key>CFBundleExecutable</key>",
+        "\t<string>open-dashboard</string>",
+        "\t<key>CFBundleURLTypes</key>",
+        "\t<array>",
+        "\t\t<dict>",
+        "\t\t\t<key>CFBundleURLName</key>",
+        "\t\t\t<string>Claude Dashboard</string>",
+        "\t\t\t<key>CFBundleURLSchemes</key>",
+        "\t\t\t<array>",
+        `\t\t\t\t<string>${PROTOCOL_SCHEME}</string>`,
+        "\t\t\t</array>",
+        "\t\t</dict>",
+        "\t</array>",
+        "</dict>",
+        "</plist>",
+        "",
+      ].join("\n");
+      fs.writeFileSync(path.join(appDir, "Info.plist"), infoPlist);
+
+      const launchScript = `#!/bin/sh\nopen "${url}"\n`;
+      const scriptPath = path.join(macOSDir, "open-dashboard");
+      fs.writeFileSync(scriptPath, launchScript, { mode: 0o755 });
+
+      // Register with Launch Services
+      try {
+        execSync(
+          `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -R "${path.dirname(appDir)}"`,
+          { stdio: "ignore" },
+        );
+      } catch {
+        // lsregister may not be available; the .app should still work on next login
+      }
+    } else {
+      // Linux — XDG desktop entry for protocol handler
+      const desktopPath = getProtocolDesktopPath();
+      fs.mkdirSync(path.dirname(desktopPath), { recursive: true });
+
+      const content = [
+        "[Desktop Entry]",
+        "Version=1.1",
+        "Type=Application",
+        "Name=Claude Dashboard Protocol Handler",
+        `Exec=xdg-open ${url}`,
+        `MimeType=x-scheme-handler/${PROTOCOL_SCHEME};`,
+        "NoDisplay=true",
+        "",
+      ].join("\n");
+      fs.writeFileSync(desktopPath, content);
+
+      try {
+        execSync(
+          `xdg-mime default claude-dashboard-handler.desktop x-scheme-handler/${PROTOCOL_SCHEME}`,
+          { stdio: "ignore" },
+        );
+      } catch {
+        // xdg-mime may not be available
+      }
+    }
+  } catch {
+    // Protocol registration is best-effort; don't fail install
+  }
+
+  console.log(`  Protocol:      ${PROTOCOL_SCHEME}:// registered`);
+}
+
+function unregisterProtocol(): void {
+  const platform = process.platform;
+
+  try {
+    if (platform === "win32") {
+      execSync(`reg delete "HKCU\\Software\\Classes\\${PROTOCOL_SCHEME}" /f`, { stdio: "ignore" });
+    } else if (platform === "darwin") {
+      const appDir = path.join(os.homedir(), "Applications", "Claude Dashboard Protocol.app");
+      fs.rmSync(appDir, { recursive: true, force: true });
+    } else {
+      const desktopPath = getProtocolDesktopPath();
+      try {
+        fs.unlinkSync(desktopPath);
+      } catch {
+        // Ignore
+      }
+      try {
+        execSync("update-desktop-database ~/.local/share/applications/", {
+          stdio: "ignore",
+        });
+      } catch {
+        // Ignore
+      }
+    }
+  } catch {
+    // Cleanup is best-effort
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Install / Uninstall
+// ---------------------------------------------------------------------------
+
 export function install(port: number): void {
   // 1. Create directories
   fs.mkdirSync(SERVER_DIR, { recursive: true });
@@ -192,8 +415,18 @@ export function install(port: number): void {
   console.log(`  Hook script:   ${HOOK_SCRIPT_PATH}`);
   console.log(`  Config:        ${CONFIG_PATH}`);
   console.log(`  Port:          ${port}`);
+
+  // 6. Create desktop/start-menu shortcut
+  createShortcuts(port);
+
+  // 7. Register protocol handler
+  registerProtocol(port);
+
   console.log("");
   console.log("The dashboard will auto-launch when a Claude Code session starts.");
+  console.log(
+    `You can also open it via the shortcut or by typing "${PROTOCOL_SCHEME}://" in your browser.`,
+  );
   console.log("To uninstall: npx @kosinal/claude-code-dashboard uninstall");
 }
 
@@ -201,14 +434,18 @@ export function uninstall(): void {
   // 1. Remove all hooks from settings.json (both modes)
   removeHooks();
 
-  // 2. Remove dashboard directory
+  // 2. Remove shortcuts and protocol handler
+  removeShortcuts();
+  unregisterProtocol();
+
+  // 3. Remove dashboard directory
   try {
     fs.rmSync(DASHBOARD_DIR, { recursive: true, force: true });
   } catch {
     // Ignore — may not exist
   }
 
-  // 3. Remove hook script
+  // 4. Remove hook script
   try {
     fs.unlinkSync(HOOK_SCRIPT_PATH);
   } catch {
@@ -216,6 +453,7 @@ export function uninstall(): void {
   }
 
   console.log("Dashboard uninstalled successfully.");
+  console.log("  Shortcut removed, protocol handler unregistered.");
 }
 
 export function writeLockFile(port: number): void {
