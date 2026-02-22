@@ -9,20 +9,27 @@ export interface DashboardServer {
 }
 
 export interface ServerOptions {
+  store: Store;
   idleTimeoutMs?: number;
   cleanupIntervalMs?: number;
+  onShutdown?: () => void;
+  onRestart?: () => void;
 }
 
-export function createServer(store: Store, options?: ServerOptions): DashboardServer {
-  const idleTimeoutMs = options?.idleTimeoutMs ?? 5 * 60 * 1000;
-  const cleanupIntervalMs = options?.cleanupIntervalMs ?? 60_000;
+export function createServer(options: ServerOptions): DashboardServer {
+  const { store, onShutdown, onRestart } = options;
+  const idleTimeoutMs = options.idleTimeoutMs ?? 5 * 60 * 1000;
+  const cleanupIntervalMs = options.cleanupIntervalMs ?? 60_000;
   const sseClients = new Set<http.ServerResponse>();
 
-  function broadcast() {
-    const data = JSON.stringify(store.getAllSessions());
+  function broadcastEvent(event: string, data: string) {
     for (const res of sseClients) {
-      res.write(`event: update\ndata: ${data}\n\n`);
+      res.write(`event: ${event}\ndata: ${data}\n\n`);
     }
+  }
+
+  function broadcast() {
+    broadcastEvent("update", JSON.stringify(store.getAllSessions()));
   }
 
   const server = http.createServer((req, res) => {
@@ -80,6 +87,22 @@ export function createServer(store: Store, options?: ServerOptions): DashboardSe
     if (req.method === "GET" && pathname === "/api/sessions") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(store.getAllSessions()));
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/shutdown") {
+      broadcastEvent("shutdown", JSON.stringify({ ok: true }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+      if (onShutdown) setImmediate(() => onShutdown());
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/restart") {
+      broadcastEvent("restart", JSON.stringify({ ok: true }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+      if (onRestart) setImmediate(() => onRestart());
       return;
     }
 

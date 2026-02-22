@@ -1,6 +1,6 @@
 {
   "name": "claude-code-dashboard",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "type": "module",
   "description": "Real-time browser dashboard for Claude Code session states",
   "bin": {

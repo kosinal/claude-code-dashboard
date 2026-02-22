@@ -52,4 +52,49 @@ describe("getDashboardHtml", () => {
   it("uses tag to deduplicate notifications", () => {
     assert.ok(html.includes("claude-waiting-"));
   });
+
+  it("contains Stop and Restart buttons", () => {
+    assert.ok(html.includes('id="btnStop"'));
+    assert.ok(html.includes('id="btnRestart"'));
+    assert.ok(html.includes("btn-danger"));
+  });
+
+  it("contains overlay container", () => {
+    assert.ok(html.includes('id="overlayContainer"'));
+  });
+
+  it("contains server-controls section", () => {
+    assert.ok(html.includes("server-controls"));
+  });
+
+  it("contains overlay CSS styles", () => {
+    assert.ok(html.includes(".overlay"));
+    assert.ok(html.includes(".overlay-card"));
+  });
+
+  it("contains confirmation dialog functions", () => {
+    assert.ok(html.includes("function showConfirm"));
+    assert.ok(html.includes("function showOverlay"));
+  });
+
+  it("handles shutdown SSE event", () => {
+    assert.ok(html.includes("'shutdown'"));
+    assert.ok(html.includes("Server Stopped"));
+  });
+
+  it("handles restart SSE event with reconnection", () => {
+    assert.ok(html.includes("'restart'"));
+    assert.ok(html.includes("function attemptReconnect"));
+    assert.ok(html.includes("Restarting..."));
+  });
+
+  it("posts to shutdown and restart API endpoints", () => {
+    assert.ok(html.includes("/api/shutdown"));
+    assert.ok(html.includes("/api/restart"));
+  });
+
+  it("disables buttons when disconnected", () => {
+    assert.ok(html.includes("setButtonsEnabled(false)"));
+    assert.ok(html.includes("setButtonsEnabled(true)"));
+  });
 });

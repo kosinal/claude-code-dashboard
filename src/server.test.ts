@@ -6,10 +6,16 @@ import { createServer, type DashboardServer, type ServerOptions } from "./server
 
 let dashboard: DashboardServer | null = null;
 
-function startServer(options?: ServerOptions): Promise<{ port: number; dashboard: DashboardServer }> {
+function startServer(opts?: Partial<ServerOptions>): Promise<{ port: number; dashboard: DashboardServer }> {
   return new Promise((resolve) => {
     const store = createStore();
-    const d = createServer(store, options);
+    const d = createServer({
+      store,
+      onShutdown: opts?.onShutdown,
+      onRestart: opts?.onRestart,
+      idleTimeoutMs: opts?.idleTimeoutMs,
+      cleanupIntervalMs: opts?.cleanupIntervalMs,
+    });
     dashboard = d;
     d.server.listen(0, "127.0.0.1", () => {
       const addr = d.server.address() as { port: number };
@@ -277,5 +283,112 @@ describe("HTTP Server", () => {
     sessions = await fetch(port, "GET", "/api/sessions");
     list = JSON.parse(sessions.body);
     assert.equal(list.length, 0);
+  });
+
+  it("POST /api/shutdown returns 200 and triggers onShutdown", async () => {
+    let shutdownCalled = false;
+    const { port } = await startServer({
+      onShutdown() { shutdownCalled = true; },
+    });
+    const res = await fetch(port, "POST", "/api/shutdown");
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(res.body);
+    assert.equal(parsed.ok, true);
+    // Wait for setImmediate to fire
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(shutdownCalled, true);
+  });
+
+  it("POST /api/restart returns 200 and triggers onRestart", async () => {
+    let restartCalled = false;
+    const { port } = await startServer({
+      onRestart() { restartCalled = true; },
+    });
+    const res = await fetch(port, "POST", "/api/restart");
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(res.body);
+    assert.equal(parsed.ok, true);
+    // Wait for setImmediate to fire
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(restartCalled, true);
+  });
+
+  it("SSE clients receive shutdown event", async () => {
+    const { port } = await startServer();
+
+    const sseData = await new Promise<string>((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/events",
+          method: "GET",
+        },
+        (res) => {
+          let buf = "";
+          res.on("data", (chunk) => {
+            buf += chunk;
+            // Wait for init + shutdown events
+            const events = buf.split("\n\n").filter(Boolean);
+            if (events.length >= 2) {
+              req.destroy();
+              resolve(events[1]);
+            }
+          });
+        }
+      );
+      req.on("error", (err) => {
+        if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") {
+          reject(err);
+        }
+      });
+      req.end();
+
+      // Trigger shutdown after SSE connects
+      setTimeout(() => {
+        fetch(port, "POST", "/api/shutdown");
+      }, 100);
+    });
+
+    assert.ok(sseData.includes("event: shutdown"));
+  });
+
+  it("SSE clients receive restart event", async () => {
+    const { port } = await startServer();
+
+    const sseData = await new Promise<string>((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/events",
+          method: "GET",
+        },
+        (res) => {
+          let buf = "";
+          res.on("data", (chunk) => {
+            buf += chunk;
+            const events = buf.split("\n\n").filter(Boolean);
+            if (events.length >= 2) {
+              req.destroy();
+              resolve(events[1]);
+            }
+          });
+        }
+      );
+      req.on("error", (err) => {
+        if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") {
+          reject(err);
+        }
+      });
+      req.end();
+
+      // Trigger restart after SSE connects
+      setTimeout(() => {
+        fetch(port, "POST", "/api/restart");
+      }, 100);
+    });
+
+    assert.ok(sseData.includes("event: restart"));
   });
 });

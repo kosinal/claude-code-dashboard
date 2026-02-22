@@ -31,6 +31,44 @@ export function getDashboardHtml(): string {
     color: #f0f6fc;
   }
 
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .server-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .server-controls button {
+    background: #21262d;
+    color: #c9d1d9;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .server-controls button:hover {
+    background: #30363d;
+    border-color: #484f58;
+  }
+
+  .server-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .server-controls .btn-danger:hover:not(:disabled) {
+    background: #da3633;
+    border-color: #f85149;
+    color: #f0f6fc;
+  }
+
   .connection-status {
     display: flex;
     align-items: center;
@@ -48,6 +86,87 @@ export function getDashboardHtml(): string {
   }
 
   .connection-dot.connected { background: #3fb950; }
+
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .overlay-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    min-width: 340px;
+    max-width: 440px;
+    text-align: center;
+  }
+
+  .overlay-card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #f0f6fc;
+    margin-bottom: 8px;
+  }
+
+  .overlay-card p {
+    font-size: 14px;
+    color: #8b949e;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .overlay-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .overlay-actions button {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 1px solid #30363d;
+    transition: background 0.2s;
+  }
+
+  .overlay-actions .btn-cancel {
+    background: #21262d;
+    color: #c9d1d9;
+  }
+
+  .overlay-actions .btn-cancel:hover {
+    background: #30363d;
+  }
+
+  .overlay-actions .btn-confirm {
+    background: #238636;
+    color: #f0f6fc;
+    border-color: #2ea043;
+  }
+
+  .overlay-actions .btn-confirm:hover {
+    background: #2ea043;
+  }
+
+  .overlay-actions .btn-confirm-danger {
+    background: #da3633;
+    color: #f0f6fc;
+    border-color: #f85149;
+  }
+
+  .overlay-actions .btn-confirm-danger:hover {
+    background: #f85149;
+  }
 
   .empty-state {
     text-align: center;
@@ -177,11 +296,18 @@ export function getDashboardHtml(): string {
 <body>
 <header>
   <h1>Claude Code Dashboard</h1>
-  <div class="connection-status">
-    <div class="connection-dot" id="connDot"></div>
-    <span id="connLabel">Disconnected</span>
+  <div class="header-right">
+    <div class="server-controls">
+      <button id="btnRestart" disabled>Restart</button>
+      <button id="btnStop" class="btn-danger" disabled>Stop</button>
+    </div>
+    <div class="connection-status">
+      <div class="connection-dot" id="connDot"></div>
+      <span id="connLabel">Disconnected</span>
+    </div>
   </div>
 </header>
+<div id="overlayContainer"></div>
 <main id="app">
   <div class="empty-state">
     <h2>No sessions yet</h2>
@@ -191,22 +317,26 @@ export function getDashboardHtml(): string {
 </main>
 <script>
 (function() {
-  const app = document.getElementById('app');
-  const connDot = document.getElementById('connDot');
-  const connLabel = document.getElementById('connLabel');
-  let sessions = [];
-  let previousStatuses = {};
-  let initialized = false;
+  var app = document.getElementById('app');
+  var connDot = document.getElementById('connDot');
+  var connLabel = document.getElementById('connLabel');
+  var overlayContainer = document.getElementById('overlayContainer');
+  var btnStop = document.getElementById('btnStop');
+  var btnRestart = document.getElementById('btnRestart');
+  var sessions = [];
+  var previousStatuses = {};
+  var initialized = false;
+  var es = null;
 
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
 
-  const STATUS_LABELS = { running: 'Running', waiting: 'Waiting for input', done: 'Done' };
-  const STATUS_ORDER = { running: 0, waiting: 1, done: 2 };
+  var STATUS_LABELS = { running: 'Running', waiting: 'Waiting for input', done: 'Done' };
+  var STATUS_ORDER = { running: 0, waiting: 1, done: 2 };
 
   function timeAgo(ts) {
-    const diff = Math.floor((Date.now() - ts) / 1000);
+    var diff = Math.floor((Date.now() - ts) / 1000);
     if (diff < 5) return 'just now';
     if (diff < 60) return diff + 's ago';
     if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
@@ -216,7 +346,7 @@ export function getDashboardHtml(): string {
 
   function folderName(cwd) {
     if (!cwd) return 'Unknown';
-    const parts = cwd.replace(/\\\\/g, '/').split('/');
+    var parts = cwd.replace(/\\\\/g, '/').split('/');
     return parts[parts.length - 1] || parts[parts.length - 2] || cwd;
   }
 
@@ -233,14 +363,14 @@ export function getDashboardHtml(): string {
       return;
     }
 
-    const sorted = [...sessions].sort((a, b) => {
-      const od = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    var sorted = sessions.slice().sort(function(a, b) {
+      var od = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       if (od !== 0) return od;
       return b.updatedAt - a.updatedAt;
     });
 
-    app.innerHTML = '<div class="sessions-grid">' + sorted.map(s =>
-      '<div class="session-card status-' + s.status + '">' +
+    app.innerHTML = '<div class="sessions-grid">' + sorted.map(function(s) {
+      return '<div class="session-card status-' + s.status + '">' +
         '<div class="card-header">' +
           '<span class="project-name" title="' + esc(s.cwd) + '">' + esc(folderName(s.cwd)) + '</span>' +
           '<span class="status-badge"><span class="status-dot"></span>' + STATUS_LABELS[s.status] + '</span>' +
@@ -253,8 +383,8 @@ export function getDashboardHtml(): string {
           '<div class="detail-row"><span class="detail-label">Event</span>' +
             '<span class="detail-value">' + esc(s.lastEvent) + ' &middot; ' + timeAgo(s.updatedAt) + '</span></div>' +
         '</div>' +
-      '</div>'
-    ).join('') + '</div>';
+      '</div>';
+    }).join('') + '</div>';
   }
 
   function esc(str) {
@@ -282,8 +412,101 @@ export function getDashboardHtml(): string {
     newSessions.forEach(function(s) { previousStatuses[s.sessionId] = s.status; });
   }
 
+  function setButtonsEnabled(enabled) {
+    btnStop.disabled = !enabled;
+    btnRestart.disabled = !enabled;
+  }
+
+  function clearOverlay() {
+    overlayContainer.innerHTML = '';
+  }
+
+  function showOverlay(title, message) {
+    overlayContainer.innerHTML =
+      '<div class="overlay"><div class="overlay-card">' +
+        '<h2>' + esc(title) + '</h2>' +
+        '<p>' + esc(message) + '</p>' +
+      '</div></div>';
+  }
+
+  function showConfirm(title, message, label, isDanger, onConfirm) {
+    var btnClass = isDanger ? 'btn-confirm-danger' : 'btn-confirm';
+    overlayContainer.innerHTML =
+      '<div class="overlay"><div class="overlay-card">' +
+        '<h2>' + esc(title) + '</h2>' +
+        '<p>' + esc(message) + '</p>' +
+        '<div class="overlay-actions">' +
+          '<button class="btn-cancel" id="overlayCancel">Cancel</button>' +
+          '<button class="' + btnClass + '" id="overlayConfirm">' + esc(label) + '</button>' +
+        '</div>' +
+      '</div></div>';
+    document.getElementById('overlayCancel').onclick = clearOverlay;
+    document.getElementById('overlayConfirm').onclick = function() {
+      onConfirm();
+    };
+  }
+
+  function attemptReconnect() {
+    var attempts = 0;
+    var maxAttempts = 30;
+    var timer = setInterval(function() {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(timer);
+        showOverlay('Connection Lost', 'Could not reconnect to the dashboard server.');
+        return;
+      }
+      var req = new XMLHttpRequest();
+      req.open('GET', '/api/sessions', true);
+      req.timeout = 2000;
+      req.onload = function() {
+        if (req.status === 200) {
+          clearInterval(timer);
+          clearOverlay();
+          connect();
+        }
+      };
+      req.onerror = function() {};
+      req.ontimeout = function() {};
+      req.send();
+    }, 1000);
+  }
+
+  btnStop.onclick = function() {
+    showConfirm('Stop Dashboard', 'Are you sure you want to stop the dashboard server?', 'Stop', true, function() {
+      showOverlay('Stopping...', 'Shutting down the dashboard server.');
+      setButtonsEnabled(false);
+      var req = new XMLHttpRequest();
+      req.open('POST', '/api/shutdown', true);
+      req.onload = function() {
+        showOverlay('Server Stopped', 'The dashboard server has been shut down.');
+      };
+      req.onerror = function() {
+        showOverlay('Server Stopped', 'The dashboard server has been shut down.');
+      };
+      req.send();
+    });
+  };
+
+  btnRestart.onclick = function() {
+    showConfirm('Restart Dashboard', 'Are you sure you want to restart the dashboard server?', 'Restart', false, function() {
+      showOverlay('Restarting...', 'The dashboard server is restarting. Reconnecting automatically...');
+      setButtonsEnabled(false);
+      var req = new XMLHttpRequest();
+      req.open('POST', '/api/restart', true);
+      req.onload = function() {};
+      req.onerror = function() {};
+      req.send();
+    });
+  };
+
   function connect() {
-    const es = new EventSource('/api/events');
+    if (es) {
+      es.close();
+      es = null;
+    }
+
+    es = new EventSource('/api/events');
 
     es.addEventListener('init', function(e) {
       sessions = JSON.parse(e.data);
@@ -297,14 +520,29 @@ export function getDashboardHtml(): string {
       render();
     });
 
+    es.addEventListener('shutdown', function() {
+      if (es) { es.close(); es = null; }
+      setButtonsEnabled(false);
+      showOverlay('Server Stopped', 'The dashboard server has been shut down.');
+    });
+
+    es.addEventListener('restart', function() {
+      if (es) { es.close(); es = null; }
+      setButtonsEnabled(false);
+      showOverlay('Restarting...', 'The dashboard server is restarting. Reconnecting automatically...');
+      attemptReconnect();
+    });
+
     es.onopen = function() {
       connDot.classList.add('connected');
       connLabel.textContent = 'Connected';
+      setButtonsEnabled(true);
     };
 
     es.onerror = function() {
       connDot.classList.remove('connected');
       connLabel.textContent = 'Disconnected';
+      setButtonsEnabled(false);
     };
   }
 

@@ -8,7 +8,7 @@ const BIN_DIR = path.join(os.homedir(), ".claude", "bin");
 const CONFIG_PATH = path.join(DASHBOARD_DIR, "config.json");
 const SERVER_DIR = path.join(DASHBOARD_DIR, "server");
 const HOOK_SCRIPT_PATH = path.join(BIN_DIR, "claude-dashboard-hook.mjs");
-const LOCK_PATH = path.join(DASHBOARD_DIR, "dashboard.lock");
+export const LOCK_PATH = path.join(DASHBOARD_DIR, "dashboard.lock");
 
 function getThisBundle(): string {
   // In bundled form, __filename points to dist/bin.js
@@ -59,7 +59,7 @@ function postHook(data) {
 function isServerRunning() {
   try {
     if (!existsSync(LOCK_PATH)) return false;
-    const pid = parseInt(readFileSync(LOCK_PATH, 'utf-8').trim(), 10);
+    const pid = parseInt(readFileSync(LOCK_PATH, 'utf-8').trim().split(':')[0], 10);
     if (isNaN(pid)) return false;
     process.kill(pid, 0); // Check if process exists
     return true;
@@ -174,9 +174,26 @@ export function uninstall(): void {
   console.log("Dashboard uninstalled successfully.");
 }
 
-export function writeLockFile(): void {
+export function writeLockFile(port: number): void {
   fs.mkdirSync(DASHBOARD_DIR, { recursive: true });
-  fs.writeFileSync(LOCK_PATH, String(process.pid));
+  fs.writeFileSync(LOCK_PATH, `${process.pid}:${port}`);
+}
+
+export function readLockFile(): { pid: number; port: number } | null {
+  try {
+    const content = fs.readFileSync(LOCK_PATH, "utf-8").trim();
+    const parts = content.split(":");
+    const pid = parseInt(parts[0], 10);
+    const port = parts.length > 1 ? parseInt(parts[1], 10) : NaN;
+    if (isNaN(pid) || isNaN(port)) return null;
+    // Check if process is alive
+    process.kill(pid, 0);
+    return { pid, port };
+  } catch {
+    // Process dead or file missing — clean up stale lock
+    try { fs.unlinkSync(LOCK_PATH); } catch { /* ignore */ }
+    return null;
+  }
 }
 
 export function removeLockFile(): void {
