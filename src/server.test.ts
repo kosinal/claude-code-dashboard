@@ -2,14 +2,14 @@ import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as http from "node:http";
 import { createStore } from "./state.ts";
-import { createServer, type DashboardServer } from "./server.ts";
+import { createServer, type DashboardServer, type ServerOptions } from "./server.ts";
 
 let dashboard: DashboardServer | null = null;
 
-function startServer(): Promise<{ port: number; dashboard: DashboardServer }> {
+function startServer(options?: ServerOptions): Promise<{ port: number; dashboard: DashboardServer }> {
   return new Promise((resolve) => {
     const store = createStore();
-    const d = createServer(store);
+    const d = createServer(store, options);
     dashboard = d;
     d.server.listen(0, "127.0.0.1", () => {
       const addr = d.server.address() as { port: number };
@@ -208,5 +208,74 @@ describe("HTTP Server", () => {
     const { port } = await startServer();
     const res = await fetch(port, "GET", "/unknown");
     assert.equal(res.status, 404);
+  });
+
+  it("POST /api/hook with SessionEnd removes the session", async () => {
+    const { port } = await startServer();
+
+    // Create a session
+    await fetch(
+      port,
+      "POST",
+      "/api/hook",
+      JSON.stringify({
+        session_id: "end-test",
+        hook_event_name: "SessionStart",
+        cwd: "/test",
+      })
+    );
+
+    // Verify it exists
+    let sessions = await fetch(port, "GET", "/api/sessions");
+    let list = JSON.parse(sessions.body);
+    assert.equal(list.length, 1);
+
+    // End the session
+    await fetch(
+      port,
+      "POST",
+      "/api/hook",
+      JSON.stringify({
+        session_id: "end-test",
+        hook_event_name: "SessionEnd",
+      })
+    );
+
+    // Verify it's gone
+    sessions = await fetch(port, "GET", "/api/sessions");
+    list = JSON.parse(sessions.body);
+    assert.equal(list.length, 0);
+  });
+
+  it("idle cleanup removes stale sessions automatically", async () => {
+    const { port } = await startServer({
+      idleTimeoutMs: 100,
+      cleanupIntervalMs: 50,
+    });
+
+    // Create a session
+    await fetch(
+      port,
+      "POST",
+      "/api/hook",
+      JSON.stringify({
+        session_id: "idle-test",
+        hook_event_name: "SessionStart",
+        cwd: "/test",
+      })
+    );
+
+    // Verify it exists
+    let sessions = await fetch(port, "GET", "/api/sessions");
+    let list = JSON.parse(sessions.body);
+    assert.equal(list.length, 1);
+
+    // Wait for idle timeout + cleanup interval to fire
+    await new Promise((r) => setTimeout(r, 250));
+
+    // Verify it's been cleaned up
+    sessions = await fetch(port, "GET", "/api/sessions");
+    list = JSON.parse(sessions.body);
+    assert.equal(list.length, 0);
   });
 });

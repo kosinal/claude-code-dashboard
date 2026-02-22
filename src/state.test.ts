@@ -15,10 +15,10 @@ describe("createStore", () => {
       hook_event_name: "SessionStart",
       cwd: "/home/user/project",
     });
-    assert.equal(session.status, "waiting");
-    assert.equal(session.sessionId, "s1");
-    assert.equal(session.cwd, "/home/user/project");
-    assert.equal(session.lastEvent, "SessionStart");
+    assert.equal(session!.status, "waiting");
+    assert.equal(session!.sessionId, "s1");
+    assert.equal(session!.cwd, "/home/user/project");
+    assert.equal(session!.lastEvent, "SessionStart");
   });
 
   it("UserPromptSubmit transitions to running", () => {
@@ -28,7 +28,7 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "UserPromptSubmit",
     });
-    assert.equal(session.status, "running");
+    assert.equal(session!.status, "running");
   });
 
   it("Stop transitions to waiting", () => {
@@ -42,17 +42,28 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "Stop",
     });
-    assert.equal(session.status, "waiting");
+    assert.equal(session!.status, "waiting");
   });
 
-  it("SessionEnd transitions to done", () => {
+  it("SessionEnd removes session and returns null", () => {
     const store = createStore();
     store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
-    const session = store.handleEvent({
+    const result = store.handleEvent({
       session_id: "s1",
       hook_event_name: "SessionEnd",
     });
-    assert.equal(session.status, "done");
+    assert.equal(result, null);
+    assert.equal(store.getSession("s1"), undefined);
+    assert.equal(store.getAllSessions().length, 0);
+  });
+
+  it("SessionEnd on nonexistent session returns null", () => {
+    const store = createStore();
+    const result = store.handleEvent({
+      session_id: "nonexistent",
+      hook_event_name: "SessionEnd",
+    });
+    assert.equal(result, null);
   });
 
   it("tracks multiple sessions independently", () => {
@@ -76,7 +87,7 @@ describe("createStore", () => {
       session_id: "new",
       hook_event_name: "UserPromptSubmit",
     });
-    assert.equal(session.status, "running");
+    assert.equal(session!.status, "running");
     assert.equal(store.getAllSessions().length, 1);
   });
 
@@ -94,15 +105,15 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "SessionStart",
     });
-    const firstUpdated = s1.updatedAt;
+    const firstUpdated = s1!.updatedAt;
 
     // Small delay to ensure timestamp changes
     const s2 = store.handleEvent({
       session_id: "s1",
       hook_event_name: "UserPromptSubmit",
     });
-    assert.ok(s2.updatedAt >= firstUpdated);
-    assert.equal(s2.startedAt, s1.startedAt);
+    assert.ok(s2!.updatedAt >= firstUpdated);
+    assert.equal(s2!.startedAt, s1!.startedAt);
   });
 
   it("updates cwd when provided", () => {
@@ -126,7 +137,44 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "UnknownEvent",
     });
-    assert.equal(session.sessionId, "s1");
-    assert.equal(session.status, "waiting");
+    assert.equal(session!.sessionId, "s1");
+    assert.equal(session!.status, "waiting");
+  });
+
+  it("removeSession deletes an existing session", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    assert.equal(store.removeSession("s1"), true);
+    assert.equal(store.getSession("s1"), undefined);
+    assert.equal(store.getAllSessions().length, 0);
+  });
+
+  it("removeSession returns false for nonexistent session", () => {
+    const store = createStore();
+    assert.equal(store.removeSession("nope"), false);
+  });
+
+  it("cleanIdleSessions removes sessions idle longer than maxIdleMs", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s2", hook_event_name: "SessionStart" });
+
+    // Backdate s1 to make it idle
+    const s1 = store.getSession("s1")!;
+    s1.updatedAt = Date.now() - 10_000;
+
+    const removed = store.cleanIdleSessions(5_000);
+    assert.deepStrictEqual(removed, ["s1"]);
+    assert.equal(store.getSession("s1"), undefined);
+    assert.ok(store.getSession("s2"));
+    assert.equal(store.getAllSessions().length, 1);
+  });
+
+  it("cleanIdleSessions returns empty array when no sessions are idle", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    const removed = store.cleanIdleSessions(60_000);
+    assert.deepStrictEqual(removed, []);
+    assert.equal(store.getAllSessions().length, 1);
   });
 });
