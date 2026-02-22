@@ -1,10 +1,10 @@
 import { exec, spawn } from "node:child_process";
 import * as http from "node:http";
 import * as net from "node:net";
-import { createStore } from "./state.ts";
-import { createServer } from "./server.ts";
 import { installHooks, removeHooks } from "./hooks.ts";
-import { install, uninstall, writeLockFile, removeLockFile, readLockFile } from "./installer.ts";
+import { install, readLockFile, removeLockFile, uninstall, writeLockFile } from "./installer.ts";
+import { createServer } from "./server.ts";
+import { createStore } from "./state.ts";
 
 const DEFAULT_PORT = 8377;
 
@@ -23,7 +23,7 @@ function parseArgs(argv: string[]): {
     const arg = argv[i];
     if (arg === "--port" && i + 1 < argv.length) {
       port = parseInt(argv[++i], 10);
-      if (isNaN(port) || port < 1 || port > 65535) {
+      if (Number.isNaN(port) || port < 1 || port > 65535) {
         console.error("Error: Invalid port number");
         process.exit(1);
       }
@@ -47,7 +47,8 @@ function parseArgs(argv: string[]): {
 }
 
 function printHelp(): void {
-  console.log(`
+  console.log(
+    `
 claude-code-dashboard - Real-time browser dashboard for Claude Code sessions
 
 Usage:
@@ -70,7 +71,8 @@ Quick mode (default):
 Install mode:
   Copies the server to ~/.claude/dashboard/ and installs persistent hooks.
   The dashboard auto-launches when a Claude Code session starts.
-`.trim());
+`.trim(),
+  );
 }
 
 function openBrowser(url: string): void {
@@ -97,10 +99,13 @@ function httpPost(port: number, urlPath: string): Promise<{ status: number; body
         let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => resolve({ status: res.statusCode!, body: data }));
-      }
+      },
     );
     req.on("error", reject);
-    req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("timeout"));
+    });
     req.end();
   });
 }
@@ -264,7 +269,7 @@ function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
     },
     onRestart() {
       cleanup();
-      const args = process.argv.slice(2).filter(a => a !== "restart");
+      const args = process.argv.slice(2).filter((a) => a !== "restart");
       const child = spawn(process.execPath, [process.argv[1], ...args], {
         detached: true,
         stdio: "ignore",
@@ -290,9 +295,7 @@ function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
 
   dashboard.server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
-      console.error(
-        `Error: Port ${port} is already in use. Try --port <number>`
-      );
+      console.error(`Error: Port ${port} is already in use. Try --port <number>`);
       process.exit(1);
     }
     throw err;

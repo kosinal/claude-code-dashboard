@@ -1,17 +1,12 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 
 const MARKER_QUICK = "__claude_code_dashboard_quick__";
 const MARKER_INSTALL = "__claude_code_dashboard_install__";
 const MARKER_LEGACY = "__claude_code_dashboard__";
 
-const HOOK_EVENTS = [
-  "SessionStart",
-  "UserPromptSubmit",
-  "Stop",
-  "SessionEnd",
-] as const;
+const HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"] as const;
 
 interface HookEntry {
   type: string;
@@ -47,19 +42,13 @@ function readSettings(configDir?: string): Settings {
     const parsed = JSON.parse(content);
     return parsed as Settings;
   } catch (err: unknown) {
-    if (
-      err instanceof Error &&
-      "code" in err &&
-      (err as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
+    if (err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT") {
       return {};
     }
     // Invalid JSON — backup and return empty
     try {
-      fs.copyFileSync(settingsPath, settingsPath + ".bak");
-      console.warn(
-        `Warning: Invalid settings.json backed up to ${settingsPath}.bak`
-      );
+      fs.copyFileSync(settingsPath, `${settingsPath}.bak`);
+      console.warn(`Warning: Invalid settings.json backed up to ${settingsPath}.bak`);
     } catch {
       // Ignore backup failure
     }
@@ -71,7 +60,7 @@ function writeSettings(settings: Settings, configDir?: string): void {
   const settingsPath = getSettingsPath(configDir);
   const dir = path.dirname(settingsPath);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  fs.writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 function backupSettings(configDir?: string): void {
@@ -94,7 +83,7 @@ function removeHooksByMarkers(settings: Settings, markers: string[]): void {
     const filtered: MatcherGroup[] = [];
     for (const group of groups) {
       const kept = group.hooks.filter(
-        (h) => !h.statusMessage || !markers.includes(h.statusMessage)
+        (h) => !h.statusMessage || !markers.includes(h.statusMessage),
       );
       if (kept.length > 0) {
         filtered.push({ ...group, hooks: kept });
@@ -136,22 +125,21 @@ export function installHooks(port: number, configDir?: string): void {
         : `curl -s -X POST -H "Content-Type: application/json" -d @- http://localhost:${port}/api/hook > /dev/null 2>&1`;
 
     settings.hooks[event].push({
-      hooks: [{
-        type: "command",
-        command,
-        async: true,
-        statusMessage: MARKER_QUICK,
-      }],
+      hooks: [
+        {
+          type: "command",
+          command,
+          async: true,
+          statusMessage: MARKER_QUICK,
+        },
+      ],
     });
   }
 
   writeSettings(settings, configDir);
 }
 
-export function installHooksWithCommand(
-  command: string,
-  configDir?: string
-): void {
+export function installHooksWithCommand(command: string, configDir?: string): void {
   const settings = readSettings(configDir);
   backupSettings(configDir);
 
@@ -168,12 +156,14 @@ export function installHooksWithCommand(
     }
 
     settings.hooks[event].push({
-      hooks: [{
-        type: "command",
-        command,
-        async: true,
-        statusMessage: MARKER_INSTALL,
-      }],
+      hooks: [
+        {
+          type: "command",
+          command,
+          async: true,
+          statusMessage: MARKER_INSTALL,
+        },
+      ],
     });
   }
 

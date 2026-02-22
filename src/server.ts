@@ -1,6 +1,6 @@
 import * as http from "node:http";
-import type { Store, HookPayload } from "./state.ts";
 import { getDashboardHtml } from "./dashboard.ts";
+import type { HookPayload, Store } from "./state.ts";
 
 export interface DashboardServer {
   server: http.Server;

@@ -1,5 +1,5 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { createStore } from "./state.ts";
 
 describe("createStore", () => {
@@ -15,10 +15,10 @@ describe("createStore", () => {
       hook_event_name: "SessionStart",
       cwd: "/home/user/project",
     });
-    assert.equal(session!.status, "waiting");
-    assert.equal(session!.sessionId, "s1");
-    assert.equal(session!.cwd, "/home/user/project");
-    assert.equal(session!.lastEvent, "SessionStart");
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.sessionId, "s1");
+    assert.equal(session?.cwd, "/home/user/project");
+    assert.equal(session?.lastEvent, "SessionStart");
   });
 
   it("UserPromptSubmit transitions to running", () => {
@@ -28,7 +28,7 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "UserPromptSubmit",
     });
-    assert.equal(session!.status, "running");
+    assert.equal(session?.status, "running");
   });
 
   it("Stop transitions to waiting", () => {
@@ -42,7 +42,7 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "Stop",
     });
-    assert.equal(session!.status, "waiting");
+    assert.equal(session?.status, "waiting");
   });
 
   it("SessionEnd removes session and returns null", () => {
@@ -87,7 +87,7 @@ describe("createStore", () => {
       session_id: "new",
       hook_event_name: "UserPromptSubmit",
     });
-    assert.equal(session!.status, "running");
+    assert.equal(session?.status, "running");
     assert.equal(store.getAllSessions().length, 1);
   });
 
@@ -105,15 +105,15 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "SessionStart",
     });
-    const firstUpdated = s1!.updatedAt;
+    const firstUpdated = s1?.updatedAt;
 
     // Small delay to ensure timestamp changes
     const s2 = store.handleEvent({
       session_id: "s1",
       hook_event_name: "UserPromptSubmit",
     });
-    assert.ok(s2!.updatedAt >= firstUpdated);
-    assert.equal(s2!.startedAt, s1!.startedAt);
+    assert.ok(s2?.updatedAt >= firstUpdated);
+    assert.equal(s2?.startedAt, s1?.startedAt);
   });
 
   it("updates cwd when provided", () => {
@@ -137,8 +137,8 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "UnknownEvent",
     });
-    assert.equal(session!.sessionId, "s1");
-    assert.equal(session!.status, "waiting");
+    assert.equal(session?.sessionId, "s1");
+    assert.equal(session?.status, "waiting");
   });
 
   it("removeSession deletes an existing session", () => {

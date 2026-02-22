@@ -1,12 +1,14 @@
-import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as http from "node:http";
-import { createStore } from "./state.ts";
+import { afterEach, describe, it } from "node:test";
 import { createServer, type DashboardServer, type ServerOptions } from "./server.ts";
+import { createStore } from "./state.ts";
 
 let dashboard: DashboardServer | null = null;
 
-function startServer(opts?: Partial<ServerOptions>): Promise<{ port: number; dashboard: DashboardServer }> {
+function startServer(
+  opts?: Partial<ServerOptions>,
+): Promise<{ port: number; dashboard: DashboardServer }> {
   return new Promise((resolve) => {
     const store = createStore();
     const d = createServer({
@@ -28,7 +30,7 @@ function fetch(
   port: number,
   method: string,
   path: string,
-  body?: string
+  body?: string,
 ): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
   return new Promise((resolve, reject) => {
     const req = http.request(
@@ -37,17 +39,13 @@ function fetch(
         port,
         path,
         method,
-        headers: body
-          ? { "Content-Type": "application/json" }
-          : undefined,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
       },
       (res) => {
         let data = "";
         res.on("data", (chunk) => (data += chunk));
-        res.on("end", () =>
-          resolve({ status: res.statusCode!, headers: res.headers, body: data })
-        );
-      }
+        res.on("end", () => resolve({ status: res.statusCode!, headers: res.headers, body: data }));
+      },
     );
     req.on("error", reject);
     if (body) req.write(body);
@@ -81,7 +79,7 @@ describe("HTTP Server", () => {
         session_id: "test-1",
         hook_event_name: "SessionStart",
         cwd: "/test",
-      })
+      }),
     );
     assert.equal(res.status, 200);
     const parsed = JSON.parse(res.body);
@@ -102,12 +100,7 @@ describe("HTTP Server", () => {
 
   it("POST /api/hook with missing fields returns 400", async () => {
     const { port } = await startServer();
-    const res = await fetch(
-      port,
-      "POST",
-      "/api/hook",
-      JSON.stringify({ session_id: "x" })
-    );
+    const res = await fetch(port, "POST", "/api/hook", JSON.stringify({ session_id: "x" }));
     assert.equal(res.status, 400);
   });
 
@@ -133,9 +126,7 @@ describe("HTTP Server", () => {
         },
         (res) => {
           assert.equal(res.statusCode, 200);
-          assert.ok(
-            res.headers["content-type"]?.includes("text/event-stream")
-          );
+          assert.ok(res.headers["content-type"]?.includes("text/event-stream"));
           let buf = "";
           res.on("data", (chunk) => {
             buf += chunk;
@@ -144,7 +135,7 @@ describe("HTTP Server", () => {
               resolve(buf);
             }
           });
-        }
+        },
       );
       req.on("error", (err) => {
         // Ignore ECONNRESET from destroy
@@ -163,7 +154,7 @@ describe("HTTP Server", () => {
     const { port } = await startServer();
 
     const updateData = await new Promise<string>((resolve, reject) => {
-      let eventCount = 0;
+      const _eventCount = 0;
       const req = http.request(
         {
           hostname: "127.0.0.1",
@@ -182,7 +173,7 @@ describe("HTTP Server", () => {
               resolve(events[1]);
             }
           });
-        }
+        },
       );
       req.on("error", (err) => {
         if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") {
@@ -201,7 +192,7 @@ describe("HTTP Server", () => {
             session_id: "sse-test",
             hook_event_name: "SessionStart",
             cwd: "/sse-test",
-          })
+          }),
         );
       }, 100);
     });
@@ -228,7 +219,7 @@ describe("HTTP Server", () => {
         session_id: "end-test",
         hook_event_name: "SessionStart",
         cwd: "/test",
-      })
+      }),
     );
 
     // Verify it exists
@@ -244,7 +235,7 @@ describe("HTTP Server", () => {
       JSON.stringify({
         session_id: "end-test",
         hook_event_name: "SessionEnd",
-      })
+      }),
     );
 
     // Verify it's gone
@@ -268,7 +259,7 @@ describe("HTTP Server", () => {
         session_id: "idle-test",
         hook_event_name: "SessionStart",
         cwd: "/test",
-      })
+      }),
     );
 
     // Verify it exists
@@ -288,7 +279,9 @@ describe("HTTP Server", () => {
   it("POST /api/shutdown returns 200 and triggers onShutdown", async () => {
     let shutdownCalled = false;
     const { port } = await startServer({
-      onShutdown() { shutdownCalled = true; },
+      onShutdown() {
+        shutdownCalled = true;
+      },
     });
     const res = await fetch(port, "POST", "/api/shutdown");
     assert.equal(res.status, 200);
@@ -302,7 +295,9 @@ describe("HTTP Server", () => {
   it("POST /api/restart returns 200 and triggers onRestart", async () => {
     let restartCalled = false;
     const { port } = await startServer({
-      onRestart() { restartCalled = true; },
+      onRestart() {
+        restartCalled = true;
+      },
     });
     const res = await fetch(port, "POST", "/api/restart");
     assert.equal(res.status, 200);
@@ -335,7 +330,7 @@ describe("HTTP Server", () => {
               resolve(events[1]);
             }
           });
-        }
+        },
       );
       req.on("error", (err) => {
         if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") {
@@ -374,7 +369,7 @@ describe("HTTP Server", () => {
               resolve(events[1]);
             }
           });
-        }
+        },
       );
       req.on("error", (err) => {
         if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") {

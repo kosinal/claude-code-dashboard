@@ -1,8 +1,8 @@
-import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { beforeEach, describe, it } from "node:test";
 import { installHooks, installHooksWithCommand, removeHooks } from "./hooks.ts";
 
 let tmpDir: string;
@@ -20,7 +20,12 @@ function readSettings(): Record<string, unknown> {
 }
 
 type HookSettings = {
-  hooks: Record<string, Array<{ hooks: Array<{ type: string; async: boolean; statusMessage: string; command: string }> }>>;
+  hooks: Record<
+    string,
+    Array<{
+      hooks: Array<{ type: string; async: boolean; statusMessage: string; command: string }>;
+    }>
+  >;
   [key: string]: unknown;
 };
 
@@ -63,7 +68,7 @@ describe("installHooks", () => {
             { matcher: "", hooks: [{ type: "command", command: "echo existing", async: false }] },
           ],
         },
-      })
+      }),
     );
 
     installHooks(8377, tmpDir);
@@ -131,16 +136,18 @@ describe("removeHooks", () => {
           SessionStart: [
             { matcher: "", hooks: [{ type: "command", command: "echo user-hook", async: false }] },
             {
-              hooks: [{
-                type: "command",
-                command: "curl ...",
-                async: true,
-                statusMessage: "__claude_code_dashboard_quick__",
-              }],
+              hooks: [
+                {
+                  type: "command",
+                  command: "curl ...",
+                  async: true,
+                  statusMessage: "__claude_code_dashboard_quick__",
+                },
+              ],
             },
           ],
         },
-      })
+      }),
     );
 
     removeHooks(tmpDir);
@@ -171,7 +178,7 @@ describe("removeHooks", () => {
     const settings = readSettings();
     assert.ok(settings.hooks);
     // Backup should exist
-    assert.ok(fs.existsSync(settingsPath() + ".bak"));
+    assert.ok(fs.existsSync(`${settingsPath()}.bak`));
   });
 
   it("cleans up empty hooks object", () => {
@@ -187,7 +194,10 @@ describe("marker isolation", () => {
     // Install mode hooks first
     installHooksWithCommand('node "hook.mjs"', tmpDir);
     const afterInstall = readSettings() as HookSettings;
-    assert.equal(afterInstall.hooks.SessionStart[0].hooks[0].statusMessage, "__claude_code_dashboard_install__");
+    assert.equal(
+      afterInstall.hooks.SessionStart[0].hooks[0].statusMessage,
+      "__claude_code_dashboard_install__",
+    );
 
     // Quick mode hooks — should add alongside install hooks
     installHooks(8377, tmpDir);
@@ -195,7 +205,7 @@ describe("marker isolation", () => {
     assert.equal(afterQuick.hooks.SessionStart.length, 2);
 
     // One install, one quick
-    const markers = afterQuick.hooks.SessionStart.map(g => g.hooks[0].statusMessage);
+    const markers = afterQuick.hooks.SessionStart.map((g) => g.hooks[0].statusMessage);
     assert.ok(markers.includes("__claude_code_dashboard_install__"));
     assert.ok(markers.includes("__claude_code_dashboard_quick__"));
   });
@@ -204,14 +214,17 @@ describe("marker isolation", () => {
     // Quick mode hooks first
     installHooks(8377, tmpDir);
     const afterQuick = readSettings() as HookSettings;
-    assert.equal(afterQuick.hooks.SessionStart[0].hooks[0].statusMessage, "__claude_code_dashboard_quick__");
+    assert.equal(
+      afterQuick.hooks.SessionStart[0].hooks[0].statusMessage,
+      "__claude_code_dashboard_quick__",
+    );
 
     // Install mode hooks — should add alongside quick hooks
     installHooksWithCommand('node "hook.mjs"', tmpDir);
     const afterInstall = readSettings() as HookSettings;
     assert.equal(afterInstall.hooks.SessionStart.length, 2);
 
-    const markers = afterInstall.hooks.SessionStart.map(g => g.hooks[0].statusMessage);
+    const markers = afterInstall.hooks.SessionStart.map((g) => g.hooks[0].statusMessage);
     assert.ok(markers.includes("__claude_code_dashboard_quick__"));
     assert.ok(markers.includes("__claude_code_dashboard_install__"));
   });
@@ -228,7 +241,10 @@ describe("marker isolation", () => {
     removeHooks(tmpDir, "quick");
     const after = readSettings() as HookSettings;
     assert.equal(after.hooks.SessionStart.length, 1);
-    assert.equal(after.hooks.SessionStart[0].hooks[0].statusMessage, "__claude_code_dashboard_install__");
+    assert.equal(
+      after.hooks.SessionStart[0].hooks[0].statusMessage,
+      "__claude_code_dashboard_install__",
+    );
   });
 
   it("removeHooks with install mode only removes install hooks", () => {
@@ -243,7 +259,10 @@ describe("marker isolation", () => {
     removeHooks(tmpDir, "install");
     const after = readSettings() as HookSettings;
     assert.equal(after.hooks.SessionStart.length, 1);
-    assert.equal(after.hooks.SessionStart[0].hooks[0].statusMessage, "__claude_code_dashboard_quick__");
+    assert.equal(
+      after.hooks.SessionStart[0].hooks[0].statusMessage,
+      "__claude_code_dashboard_quick__",
+    );
   });
 
   it("removeHooks without mode removes all hooks", () => {
@@ -266,23 +285,28 @@ describe("marker isolation", () => {
         hooks: {
           SessionStart: [
             {
-              hooks: [{
-                type: "command",
-                command: "curl ...",
-                async: true,
-                statusMessage: "__claude_code_dashboard__",
-              }],
+              hooks: [
+                {
+                  type: "command",
+                  command: "curl ...",
+                  async: true,
+                  statusMessage: "__claude_code_dashboard__",
+                },
+              ],
             },
           ],
         },
-      })
+      }),
     );
 
     // Quick mode should remove the legacy hook and add its own
     installHooks(8377, tmpDir);
     const afterQuick = readSettings() as HookSettings;
     assert.equal(afterQuick.hooks.SessionStart.length, 1);
-    assert.equal(afterQuick.hooks.SessionStart[0].hooks[0].statusMessage, "__claude_code_dashboard_quick__");
+    assert.equal(
+      afterQuick.hooks.SessionStart[0].hooks[0].statusMessage,
+      "__claude_code_dashboard_quick__",
+    );
   });
 
   it("install mode cleans up legacy marker hooks", () => {
@@ -293,22 +317,27 @@ describe("marker isolation", () => {
         hooks: {
           SessionStart: [
             {
-              hooks: [{
-                type: "command",
-                command: "curl ...",
-                async: true,
-                statusMessage: "__claude_code_dashboard__",
-              }],
+              hooks: [
+                {
+                  type: "command",
+                  command: "curl ...",
+                  async: true,
+                  statusMessage: "__claude_code_dashboard__",
+                },
+              ],
             },
           ],
         },
-      })
+      }),
     );
 
     installHooksWithCommand('node "hook.mjs"', tmpDir);
     const afterInstall = readSettings() as HookSettings;
     assert.equal(afterInstall.hooks.SessionStart.length, 1);
-    assert.equal(afterInstall.hooks.SessionStart[0].hooks[0].statusMessage, "__claude_code_dashboard_install__");
+    assert.equal(
+      afterInstall.hooks.SessionStart[0].hooks[0].statusMessage,
+      "__claude_code_dashboard_install__",
+    );
   });
 
   it("removeHooks with mode also cleans up legacy hooks", () => {
@@ -319,25 +348,29 @@ describe("marker isolation", () => {
         hooks: {
           SessionStart: [
             {
-              hooks: [{
-                type: "command",
-                command: "curl legacy",
-                async: true,
-                statusMessage: "__claude_code_dashboard__",
-              }],
+              hooks: [
+                {
+                  type: "command",
+                  command: "curl legacy",
+                  async: true,
+                  statusMessage: "__claude_code_dashboard__",
+                },
+              ],
             },
             {
-              hooks: [{
-                type: "command",
-                command: "curl quick",
-                async: true,
-                statusMessage: "__claude_code_dashboard_quick__",
-              }],
+              hooks: [
+                {
+                  type: "command",
+                  command: "curl quick",
+                  async: true,
+                  statusMessage: "__claude_code_dashboard_quick__",
+                },
+              ],
             },
             { matcher: "", hooks: [{ type: "command", command: "echo user", async: false }] },
           ],
         },
-      })
+      }),
     );
 
     removeHooks(tmpDir, "quick");

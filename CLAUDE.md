@@ -19,3 +19,8 @@ npm test         # node --experimental-strip-types --test src/**/*.test.ts
 - **Localhost-only** — the server binds to `127.0.0.1`, never `0.0.0.0`.
 - **Default port** — `8377`.
 - If you are requested by user to work in worktrees, you **must use Git Worktree** for implementing the change.
+
+## Linting
+
+Run `npm run lint` before committing. Use `npm run lint:fix` to auto-fix issues.
+Biome enforces `node:` protocol imports, `.ts` import extensions, and consistent formatting.
