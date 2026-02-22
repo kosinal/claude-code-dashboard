@@ -23,14 +23,17 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  smoke-test-node18:
+  smoke-test:
     needs: build-and-test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 21]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run build
