@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Real-time browser dashboard for Claude Code session states",
   "bin": {
-    "claude-code-dashboard": "./dist/bin.js"
+    "claude-code-dashboard": "dist/bin.js"
   },
   "files": [
     "dist"
