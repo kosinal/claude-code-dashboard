@@ -63,8 +63,10 @@ describe("getDashboardHtml", () => {
     assert.ok(html.includes('id="overlayContainer"'));
   });
 
-  it("contains server-controls section", () => {
-    assert.ok(html.includes("server-controls"));
+  it("contains notification toggle and footer controls", () => {
+    assert.ok(html.includes("notification-toggle"));
+    assert.ok(html.includes('id="notifToggle"'));
+    assert.ok(html.includes("<footer>"));
   });
 
   it("contains overlay CSS styles", () => {

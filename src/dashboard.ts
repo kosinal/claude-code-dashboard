@@ -37,12 +37,79 @@ export function getDashboardHtml(): string {
     gap: 16px;
   }
 
-  .server-controls {
+  .notification-toggle {
     display: flex;
+    align-items: center;
     gap: 8px;
   }
 
-  .server-controls button {
+  .toggle-label {
+    font-size: 13px;
+    color: #8b949e;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 11px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: #8b949e;
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .toggle-switch input:checked + .toggle-slider {
+    background: #238636;
+    border-color: #2ea043;
+  }
+
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(22px);
+    background: #f0f6fc;
+  }
+
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid #21262d;
+  }
+
+  footer button {
     background: #21262d;
     color: #c9d1d9;
     border: 1px solid #30363d;
@@ -53,17 +120,17 @@ export function getDashboardHtml(): string {
     transition: background 0.2s, border-color 0.2s;
   }
 
-  .server-controls button:hover {
+  footer button:hover {
     background: #30363d;
     border-color: #484f58;
   }
 
-  .server-controls button:disabled {
+  footer button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .server-controls .btn-danger:hover:not(:disabled) {
+  footer .btn-danger:hover:not(:disabled) {
     background: #da3633;
     border-color: #f85149;
     color: #f0f6fc;
@@ -297,9 +364,12 @@ export function getDashboardHtml(): string {
 <header>
   <h1>Claude Code Dashboard</h1>
   <div class="header-right">
-    <div class="server-controls">
-      <button id="btnRestart" disabled>Restart</button>
-      <button id="btnStop" class="btn-danger" disabled>Stop</button>
+    <div class="notification-toggle">
+      <label class="toggle-switch">
+        <input type="checkbox" id="notifToggle">
+        <span class="toggle-slider"></span>
+      </label>
+      <label class="toggle-label" for="notifToggle">Notifications</label>
     </div>
     <div class="connection-status">
       <div class="connection-dot" id="connDot"></div>
@@ -315,6 +385,10 @@ export function getDashboardHtml(): string {
     Sessions already running when the dashboard started won't be tracked.</p>
   </div>
 </main>
+<footer>
+  <button id="btnRestart" disabled>Restart</button>
+  <button id="btnStop" class="btn-danger" disabled>Stop</button>
+</footer>
 <script>
 (function() {
   var app = document.getElementById('app');
@@ -323,12 +397,23 @@ export function getDashboardHtml(): string {
   var overlayContainer = document.getElementById('overlayContainer');
   var btnStop = document.getElementById('btnStop');
   var btnRestart = document.getElementById('btnRestart');
+  var notifToggle = document.getElementById('notifToggle');
+  var notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
   var sessions = [];
   var previousStatuses = {};
   var initialized = false;
   var es = null;
 
-  if ('Notification' in window && Notification.permission === 'default') {
+  notifToggle.checked = notificationsEnabled;
+  notifToggle.addEventListener('change', function() {
+    notificationsEnabled = notifToggle.checked;
+    localStorage.setItem('notificationsEnabled', notificationsEnabled ? 'true' : 'false');
+    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  });
+
+  if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
 
@@ -398,7 +483,7 @@ export function getDashboardHtml(): string {
       newSessions.forEach(function(s) { previousStatuses[s.sessionId] = s.status; });
       return;
     }
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
       newSessions.forEach(function(s) {
         if (s.status === 'waiting' && previousStatuses[s.sessionId] !== 'waiting') {
           new Notification('Claude Code - Waiting for input', {
