@@ -86,4 +86,4 @@ npm test             # run tests (node:test with --experimental-strip-types)
 
 ## License
 
-MIT
+GNU GENERAL PUBLIC LICENSE

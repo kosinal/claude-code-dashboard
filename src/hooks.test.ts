@@ -36,12 +36,14 @@ describe("installHooks", () => {
     assert.ok(settings.hooks.SessionEnd);
   });
 
-  it("hooks have correct properties", () => {
+  it("hooks have correct properties (matcher-group format)", () => {
     installHooks(8377, tmpDir);
     const settings = readSettings() as {
-      hooks: Record<string, Array<{ type: string; async: boolean; statusMessage: string; command: string }>>;
+      hooks: Record<string, Array<{ hooks: Array<{ type: string; async: boolean; statusMessage: string; command: string }> }>>;
     };
-    const hook = settings.hooks.SessionStart[0];
+    const group = settings.hooks.SessionStart[0];
+    assert.ok(group.hooks, "matcher group should have a hooks array");
+    const hook = group.hooks[0];
     assert.equal(hook.type, "command");
     assert.equal(hook.async, true);
     assert.equal(hook.statusMessage, "__claude_code_dashboard__");
@@ -55,7 +57,7 @@ describe("installHooks", () => {
         some_setting: true,
         hooks: {
           SessionStart: [
-            { type: "command", command: "echo existing", async: false },
+            { matcher: "", hooks: [{ type: "command", command: "echo existing", async: false }] },
           ],
         },
       })
@@ -68,6 +70,43 @@ describe("installHooks", () => {
     };
     assert.equal(settings.some_setting, true);
     assert.equal(settings.hooks.SessionStart.length, 2); // existing + new
+  });
+
+  it("backs up settings.json before installing", () => {
+    const original = JSON.stringify({ some_setting: true });
+    fs.writeFileSync(settingsPath(), original);
+    installHooks(8377, tmpDir);
+    const backupPath = settingsPath().replace(/\.json$/, ".pre-dashboard.json");
+    assert.ok(fs.existsSync(backupPath));
+    assert.equal(fs.readFileSync(backupPath, "utf-8"), original);
+  });
+
+  it("backup contains pre-install state (no dashboard hooks)", () => {
+    const original = {
+      hooks: {
+        SessionStart: [
+          { matcher: "", hooks: [{ type: "command", command: "echo user-hook", async: false }] },
+        ],
+      },
+    };
+    fs.writeFileSync(settingsPath(), JSON.stringify(original));
+    installHooks(8377, tmpDir);
+    const backupPath = settingsPath().replace(/\.json$/, ".pre-dashboard.json");
+    const backed = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+    assert.deepEqual(backed, original);
+    // Backup should not contain dashboard hooks
+    const hooks = backed.hooks.SessionStart;
+    for (const group of hooks) {
+      for (const h of group.hooks) {
+        assert.notEqual(h.statusMessage, "__claude_code_dashboard__");
+      }
+    }
+  });
+
+  it("does not create backup when no settings file exists", () => {
+    installHooks(8377, tmpDir);
+    const backupPath = settingsPath().replace(/\.json$/, ".pre-dashboard.json");
+    assert.ok(!fs.existsSync(backupPath));
   });
 
   it("is idempotent (no duplicate entries)", () => {
@@ -87,12 +126,14 @@ describe("removeHooks", () => {
       JSON.stringify({
         hooks: {
           SessionStart: [
-            { type: "command", command: "echo user-hook", async: false },
+            { matcher: "", hooks: [{ type: "command", command: "echo user-hook", async: false }] },
             {
-              type: "command",
-              command: "curl ...",
-              async: true,
-              statusMessage: "__claude_code_dashboard__",
+              hooks: [{
+                type: "command",
+                command: "curl ...",
+                async: true,
+                statusMessage: "__claude_code_dashboard__",
+              }],
             },
           ],
         },
@@ -101,10 +142,10 @@ describe("removeHooks", () => {
 
     removeHooks(tmpDir);
     const settings = readSettings() as {
-      hooks: Record<string, Array<{ command: string }>>;
+      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>;
     };
     assert.equal(settings.hooks.SessionStart.length, 1);
-    assert.equal(settings.hooks.SessionStart[0].command, "echo user-hook");
+    assert.equal(settings.hooks.SessionStart[0].hooks[0].command, "echo user-hook");
   });
 
   it("is a no-op when hooks not installed", () => {

@@ -19,8 +19,14 @@ interface HookEntry {
   [key: string]: unknown;
 }
 
+interface MatcherGroup {
+  matcher?: string;
+  hooks: HookEntry[];
+  [key: string]: unknown;
+}
+
 interface Settings {
-  hooks?: Record<string, HookEntry[]>;
+  hooks?: Record<string, MatcherGroup[]>;
   [key: string]: unknown;
 }
 
@@ -66,8 +72,19 @@ function writeSettings(settings: Settings, configDir?: string): void {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
 }
 
+function backupSettings(configDir?: string): void {
+  const settingsPath = getSettingsPath(configDir);
+  const backupPath = settingsPath.replace(/\.json$/, ".pre-dashboard.json");
+  try {
+    fs.copyFileSync(settingsPath, backupPath);
+  } catch {
+    // File doesn't exist or can't be copied — nothing to back up
+  }
+}
+
 export function installHooks(port: number, configDir?: string): void {
   const settings = readSettings(configDir);
+  backupSettings(configDir);
 
   // Clean any existing dashboard hooks first
   removeHooksFromSettings(settings);
@@ -87,10 +104,12 @@ export function installHooks(port: number, configDir?: string): void {
         : `curl -s -X POST -H "Content-Type: application/json" -d @- http://localhost:${port}/api/hook > /dev/null 2>&1`;
 
     settings.hooks[event].push({
-      type: "command",
-      command,
-      async: true,
-      statusMessage: MARKER,
+      hooks: [{
+        type: "command",
+        command,
+        async: true,
+        statusMessage: MARKER,
+      }],
     });
   }
 
@@ -102,6 +121,7 @@ export function installHooksWithCommand(
   configDir?: string
 ): void {
   const settings = readSettings(configDir);
+  backupSettings(configDir);
 
   // Clean any existing dashboard hooks first
   removeHooksFromSettings(settings);
@@ -116,10 +136,12 @@ export function installHooksWithCommand(
     }
 
     settings.hooks[event].push({
-      type: "command",
-      command,
-      async: true,
-      statusMessage: MARKER,
+      hooks: [{
+        type: "command",
+        command,
+        async: true,
+        statusMessage: MARKER,
+      }],
     });
   }
 
@@ -130,12 +152,21 @@ function removeHooksFromSettings(settings: Settings): void {
   if (!settings.hooks) return;
 
   for (const event of HOOK_EVENTS) {
-    const hooks = settings.hooks[event];
-    if (!hooks) continue;
-    settings.hooks[event] = hooks.filter(
-      (h) => h.statusMessage !== MARKER
-    );
-    if (settings.hooks[event].length === 0) {
+    const groups = settings.hooks[event];
+    if (!groups) continue;
+
+    const filtered: MatcherGroup[] = [];
+    for (const group of groups) {
+      const kept = group.hooks.filter((h) => h.statusMessage !== MARKER);
+      if (kept.length > 0) {
+        filtered.push({ ...group, hooks: kept });
+      }
+      // If all hooks in the group were dashboard hooks, drop the entire group
+    }
+
+    if (filtered.length > 0) {
+      settings.hooks[event] = filtered;
+    } else {
       delete settings.hooks[event];
     }
   }
