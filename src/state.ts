@@ -17,24 +17,31 @@ export interface HookPayload {
 }
 
 export interface Store {
-  handleEvent(payload: HookPayload): Session;
+  handleEvent(payload: HookPayload): Session | null;
   getAllSessions(): Session[];
   getSession(sessionId: string): Session | undefined;
+  removeSession(sessionId: string): boolean;
+  cleanIdleSessions(maxIdleMs: number): string[];
 }
 
 const EVENT_TO_STATUS: Record<string, SessionStatus> = {
   SessionStart: "waiting",
   UserPromptSubmit: "running",
   Stop: "waiting",
-  SessionEnd: "done",
 };
 
 export function createStore(): Store {
   const sessions = new Map<string, Session>();
 
   return {
-    handleEvent(payload: HookPayload): Session {
+    handleEvent(payload: HookPayload): Session | null {
       const { session_id, hook_event_name, cwd } = payload;
+
+      if (hook_event_name === "SessionEnd") {
+        sessions.delete(session_id);
+        return null;
+      }
+
       const status = EVENT_TO_STATUS[hook_event_name];
       if (!status) {
         const existing = sessions.get(session_id);
@@ -79,6 +86,22 @@ export function createStore(): Store {
 
     getSession(sessionId: string): Session | undefined {
       return sessions.get(sessionId);
+    },
+
+    removeSession(sessionId: string): boolean {
+      return sessions.delete(sessionId);
+    },
+
+    cleanIdleSessions(maxIdleMs: number): string[] {
+      const now = Date.now();
+      const removed: string[] = [];
+      for (const [id, session] of sessions) {
+        if (now - session.updatedAt > maxIdleMs) {
+          sessions.delete(id);
+          removed.push(id);
+        }
+      }
+      return removed;
     },
   };
 }

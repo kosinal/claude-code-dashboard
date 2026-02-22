@@ -8,7 +8,14 @@ export interface DashboardServer {
   close(): Promise<void>;
 }
 
-export function createServer(store: Store): DashboardServer {
+export interface ServerOptions {
+  idleTimeoutMs?: number;
+  cleanupIntervalMs?: number;
+}
+
+export function createServer(store: Store, options?: ServerOptions): DashboardServer {
+  const idleTimeoutMs = options?.idleTimeoutMs ?? 5 * 60 * 1000;
+  const cleanupIntervalMs = options?.cleanupIntervalMs ?? 60_000;
   const sseClients = new Set<http.ServerResponse>();
 
   function broadcast() {
@@ -80,12 +87,19 @@ export function createServer(store: Store): DashboardServer {
     res.end(JSON.stringify({ error: "Not found" }));
   });
 
+  const cleanupTimer = setInterval(() => {
+    const removed = store.cleanIdleSessions(idleTimeoutMs);
+    if (removed.length > 0) broadcast();
+  }, cleanupIntervalMs);
+  cleanupTimer.unref();
+
   return {
     server,
     listen(port: number, callback?: () => void) {
       server.listen(port, "127.0.0.1", callback);
     },
     close() {
+      clearInterval(cleanupTimer);
       for (const res of sseClients) {
         res.end();
       }
