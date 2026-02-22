@@ -2,7 +2,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 
-const MARKER = "__claude_code_dashboard__";
+const MARKER_QUICK = "__claude_code_dashboard_quick__";
+const MARKER_INSTALL = "__claude_code_dashboard_install__";
+const MARKER_LEGACY = "__claude_code_dashboard__";
 
 const HOOK_EVENTS = [
   "SessionStart",
@@ -82,12 +84,42 @@ function backupSettings(configDir?: string): void {
   }
 }
 
+function removeHooksByMarkers(settings: Settings, markers: string[]): void {
+  if (!settings.hooks) return;
+
+  for (const event of HOOK_EVENTS) {
+    const groups = settings.hooks[event];
+    if (!groups) continue;
+
+    const filtered: MatcherGroup[] = [];
+    for (const group of groups) {
+      const kept = group.hooks.filter(
+        (h) => !h.statusMessage || !markers.includes(h.statusMessage)
+      );
+      if (kept.length > 0) {
+        filtered.push({ ...group, hooks: kept });
+      }
+      // If all hooks in the group were dashboard hooks, drop the entire group
+    }
+
+    if (filtered.length > 0) {
+      settings.hooks[event] = filtered;
+    } else {
+      delete settings.hooks[event];
+    }
+  }
+
+  if (Object.keys(settings.hooks).length === 0) {
+    delete settings.hooks;
+  }
+}
+
 export function installHooks(port: number, configDir?: string): void {
   const settings = readSettings(configDir);
   backupSettings(configDir);
 
-  // Clean any existing dashboard hooks first
-  removeHooksFromSettings(settings);
+  // Clean existing quick + legacy hooks (preserve install hooks)
+  removeHooksByMarkers(settings, [MARKER_QUICK, MARKER_LEGACY]);
 
   if (!settings.hooks) {
     settings.hooks = {};
@@ -108,7 +140,7 @@ export function installHooks(port: number, configDir?: string): void {
         type: "command",
         command,
         async: true,
-        statusMessage: MARKER,
+        statusMessage: MARKER_QUICK,
       }],
     });
   }
@@ -123,8 +155,8 @@ export function installHooksWithCommand(
   const settings = readSettings(configDir);
   backupSettings(configDir);
 
-  // Clean any existing dashboard hooks first
-  removeHooksFromSettings(settings);
+  // Clean existing install + legacy hooks (preserve quick hooks)
+  removeHooksByMarkers(settings, [MARKER_INSTALL, MARKER_LEGACY]);
 
   if (!settings.hooks) {
     settings.hooks = {};
@@ -140,7 +172,7 @@ export function installHooksWithCommand(
         type: "command",
         command,
         async: true,
-        statusMessage: MARKER,
+        statusMessage: MARKER_INSTALL,
       }],
     });
   }
@@ -148,35 +180,7 @@ export function installHooksWithCommand(
   writeSettings(settings, configDir);
 }
 
-function removeHooksFromSettings(settings: Settings): void {
-  if (!settings.hooks) return;
-
-  for (const event of HOOK_EVENTS) {
-    const groups = settings.hooks[event];
-    if (!groups) continue;
-
-    const filtered: MatcherGroup[] = [];
-    for (const group of groups) {
-      const kept = group.hooks.filter((h) => h.statusMessage !== MARKER);
-      if (kept.length > 0) {
-        filtered.push({ ...group, hooks: kept });
-      }
-      // If all hooks in the group were dashboard hooks, drop the entire group
-    }
-
-    if (filtered.length > 0) {
-      settings.hooks[event] = filtered;
-    } else {
-      delete settings.hooks[event];
-    }
-  }
-
-  if (Object.keys(settings.hooks).length === 0) {
-    delete settings.hooks;
-  }
-}
-
-export function removeHooks(configDir?: string): void {
+export function removeHooks(configDir?: string, mode?: "quick" | "install"): void {
   const settingsPath = getSettingsPath(configDir);
   try {
     fs.accessSync(settingsPath);
@@ -185,6 +189,16 @@ export function removeHooks(configDir?: string): void {
   }
 
   const settings = readSettings(configDir);
-  removeHooksFromSettings(settings);
+
+  let markers: string[];
+  if (mode === "quick") {
+    markers = [MARKER_QUICK, MARKER_LEGACY];
+  } else if (mode === "install") {
+    markers = [MARKER_INSTALL, MARKER_LEGACY];
+  } else {
+    markers = [MARKER_QUICK, MARKER_INSTALL, MARKER_LEGACY];
+  }
+
+  removeHooksByMarkers(settings, markers);
   writeSettings(settings, configDir);
 }

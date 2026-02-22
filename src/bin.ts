@@ -246,7 +246,7 @@ function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
     cleanedUp = true;
     if (!noHooks) {
       try {
-        removeHooks();
+        removeHooks(undefined, "quick");
         console.log("\nHooks removed from settings.json");
       } catch (err) {
         console.error("Warning: Failed to remove hooks:", err);
