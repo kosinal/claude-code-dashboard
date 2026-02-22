@@ -36,4 +36,20 @@ describe("getDashboardHtml", () => {
     assert.ok(html.includes("event: init") || html.includes("'init'"));
     assert.ok(html.includes("event: update") || html.includes("'update'"));
   });
+
+  it("requests notification permission on load", () => {
+    assert.ok(html.includes("Notification.requestPermission"));
+  });
+
+  it("contains checkAndNotify function", () => {
+    assert.ok(html.includes("function checkAndNotify"));
+  });
+
+  it("fires notification for waiting status", () => {
+    assert.ok(html.includes("Claude Code - Waiting for input"));
+  });
+
+  it("uses tag to deduplicate notifications", () => {
+    assert.ok(html.includes("claude-waiting-"));
+  });
 });

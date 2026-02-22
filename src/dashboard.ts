@@ -195,6 +195,12 @@ export function getDashboardHtml(): string {
   const connDot = document.getElementById('connDot');
   const connLabel = document.getElementById('connLabel');
   let sessions = [];
+  let previousStatuses = {};
+  let initialized = false;
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 
   const STATUS_LABELS = { running: 'Running', waiting: 'Waiting for input', done: 'Done' };
   const STATUS_ORDER = { running: 0, waiting: 1, done: 2 };
@@ -256,16 +262,38 @@ export function getDashboardHtml(): string {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function checkAndNotify(newSessions) {
+    if (!initialized) {
+      initialized = true;
+      newSessions.forEach(function(s) { previousStatuses[s.sessionId] = s.status; });
+      return;
+    }
+    if ('Notification' in window && Notification.permission === 'granted') {
+      newSessions.forEach(function(s) {
+        if (s.status === 'waiting' && previousStatuses[s.sessionId] !== 'waiting') {
+          new Notification('Claude Code - Waiting for input', {
+            body: folderName(s.cwd),
+            tag: 'claude-waiting-' + s.sessionId
+          });
+        }
+      });
+    }
+    previousStatuses = {};
+    newSessions.forEach(function(s) { previousStatuses[s.sessionId] = s.status; });
+  }
+
   function connect() {
     const es = new EventSource('/api/events');
 
     es.addEventListener('init', function(e) {
       sessions = JSON.parse(e.data);
+      checkAndNotify(sessions);
       render();
     });
 
     es.addEventListener('update', function(e) {
       sessions = JSON.parse(e.data);
+      checkAndNotify(sessions);
       render();
     });
 

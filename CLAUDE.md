@@ -18,3 +18,4 @@ npm test         # node --experimental-strip-types --test src/**/*.test.ts
 - **Embedded dashboard HTML** — the dashboard UI is a single HTML string in `dashboard.ts` (inline CSS + JS). No build step for the frontend.
 - **Localhost-only** — the server binds to `127.0.0.1`, never `0.0.0.0`.
 - **Default port** — `8377`.
+- If you are requested by user to work in worktrees, you **must use Git Worktree** for implementing the change.
