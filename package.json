@@ -1,0 +1,29 @@
+{
+  "name": "claude-code-dashboard",
+  "version": "1.0.0",
+  "description": "Real-time browser dashboard for Claude Code session states",
+  "bin": {
+    "claude-code-dashboard": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "dashboard",
+    "monitoring"
+  ],
+  "license": "MIT"
+}
