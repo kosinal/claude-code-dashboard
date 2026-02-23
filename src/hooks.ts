@@ -7,6 +7,7 @@ const MARKER_INSTALL = "__claude_code_dashboard_install__";
 const MARKER_LEGACY = "__claude_code_dashboard__";
 
 const HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"] as const;
+const INTERACTIVE_TOOLS_MATCHER = "ExitPlanMode|AskUserQuestion";
 
 interface HookEntry {
   type: string;
@@ -76,7 +77,7 @@ function backupSettings(configDir?: string): void {
 function removeHooksByMarkers(settings: Settings, markers: string[]): void {
   if (!settings.hooks) return;
 
-  for (const event of HOOK_EVENTS) {
+  for (const event of Object.keys(settings.hooks)) {
     const groups = settings.hooks[event];
     if (!groups) continue;
 
@@ -114,15 +115,15 @@ export function installHooks(port: number, configDir?: string): void {
     settings.hooks = {};
   }
 
+  const command =
+    process.platform === "win32"
+      ? `powershell -NoProfile -Command "$input | Invoke-WebRequest -Uri http://localhost:${port}/api/hook -Method POST -ContentType 'application/json' -ErrorAction SilentlyContinue | Out-Null"`
+      : `curl -s -X POST -H "Content-Type: application/json" -d @- http://localhost:${port}/api/hook > /dev/null 2>&1`;
+
   for (const event of HOOK_EVENTS) {
     if (!settings.hooks[event]) {
       settings.hooks[event] = [];
     }
-
-    const command =
-      process.platform === "win32"
-        ? `powershell -NoProfile -Command "$input | Invoke-WebRequest -Uri http://localhost:${port}/api/hook -Method POST -ContentType 'application/json' -ErrorAction SilentlyContinue | Out-Null"`
-        : `curl -s -X POST -H "Content-Type: application/json" -d @- http://localhost:${port}/api/hook > /dev/null 2>&1`;
 
     settings.hooks[event].push({
       hooks: [
@@ -135,6 +136,22 @@ export function installHooks(port: number, configDir?: string): void {
       ],
     });
   }
+
+  // PreToolUse with matcher for interactive tools (plan approval, user questions)
+  if (!settings.hooks.PreToolUse) {
+    settings.hooks.PreToolUse = [];
+  }
+  settings.hooks.PreToolUse.push({
+    matcher: INTERACTIVE_TOOLS_MATCHER,
+    hooks: [
+      {
+        type: "command",
+        command,
+        async: true,
+        statusMessage: MARKER_QUICK,
+      },
+    ],
+  });
 
   writeSettings(settings, configDir);
 }
@@ -166,6 +183,22 @@ export function installHooksWithCommand(command: string, configDir?: string): vo
       ],
     });
   }
+
+  // PreToolUse with matcher for interactive tools (plan approval, user questions)
+  if (!settings.hooks.PreToolUse) {
+    settings.hooks.PreToolUse = [];
+  }
+  settings.hooks.PreToolUse.push({
+    matcher: INTERACTIVE_TOOLS_MATCHER,
+    hooks: [
+      {
+        type: "command",
+        command,
+        async: true,
+        statusMessage: MARKER_INSTALL,
+      },
+    ],
+  });
 
   writeSettings(settings, configDir);
 }
