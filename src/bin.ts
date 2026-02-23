@@ -301,13 +301,12 @@ function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
     throw err;
   });
 
-  if (!noHooks) {
-    installHooks(port);
-  }
-
-  writeLockFile(port);
-
   dashboard.listen(port, () => {
+    if (!noHooks) {
+      installHooks(port);
+    }
+    writeLockFile(port);
+
     const url = `http://localhost:${port}`;
     console.log(`Dashboard running at ${url}`);
     if (!noHooks) {
