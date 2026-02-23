@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  release:
+    # Only run when a release/* PR is merged (not just closed)
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get version from package.json
+        id: version
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        run: >-
+          gh release create "v${{ steps.version.outputs.version }}"
+          --title "v${{ steps.version.outputs.version }}"
+          --generate-notes
+          --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
