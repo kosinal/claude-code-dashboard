@@ -28,6 +28,7 @@ const EVENT_TO_STATUS: Record<string, SessionStatus> = {
   SessionStart: "done",
   UserPromptSubmit: "running",
   Stop: "done",
+  PreToolUse: "waiting",
 };
 
 export function createStore(): Store {

@@ -131,6 +131,22 @@ describe("createStore", () => {
     assert.equal(store.getSession("s1")?.cwd, "/second");
   });
 
+  it("PreToolUse transitions running to waiting", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "UserPromptSubmit",
+    });
+    assert.equal(store.getSession("s1")?.status, "running");
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+    });
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "PreToolUse");
+  });
+
   it("handles unknown event gracefully", () => {
     const store = createStore();
     const session = store.handleEvent({
