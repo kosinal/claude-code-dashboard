@@ -89,7 +89,7 @@ describe("HTTP Server", () => {
     const sessions = await fetch(port, "GET", "/api/sessions");
     const list = JSON.parse(sessions.body);
     assert.equal(list.length, 1);
-    assert.equal(list[0].status, "waiting");
+    assert.equal(list[0].status, "done");
   });
 
   it("POST /api/hook with invalid JSON returns 400", async () => {

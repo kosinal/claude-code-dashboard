@@ -8,14 +8,14 @@ describe("createStore", () => {
     assert.deepStrictEqual(store.getAllSessions(), []);
   });
 
-  it("SessionStart creates a session with status waiting", () => {
+  it("SessionStart creates a session with status done", () => {
     const store = createStore();
     const session = store.handleEvent({
       session_id: "s1",
       hook_event_name: "SessionStart",
       cwd: "/home/user/project",
     });
-    assert.equal(session?.status, "waiting");
+    assert.equal(session?.status, "done");
     assert.equal(session?.sessionId, "s1");
     assert.equal(session?.cwd, "/home/user/project");
     assert.equal(session?.lastEvent, "SessionStart");
@@ -31,7 +31,7 @@ describe("createStore", () => {
     assert.equal(session?.status, "running");
   });
 
-  it("Stop transitions to waiting", () => {
+  it("Stop transitions to done", () => {
     const store = createStore();
     store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
     store.handleEvent({
@@ -42,7 +42,7 @@ describe("createStore", () => {
       session_id: "s1",
       hook_event_name: "Stop",
     });
-    assert.equal(session?.status, "waiting");
+    assert.equal(session?.status, "done");
   });
 
   it("SessionEnd removes session and returns null", () => {
@@ -78,7 +78,7 @@ describe("createStore", () => {
     const s1 = store.getSession("s1");
     const s2 = store.getSession("s2");
     assert.equal(s1?.status, "running");
-    assert.equal(s2?.status, "waiting");
+    assert.equal(s2?.status, "done");
   });
 
   it("unknown session_id creates new session", () => {
