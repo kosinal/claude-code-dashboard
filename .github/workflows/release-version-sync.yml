@@ -27,6 +27,13 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
 
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -75,6 +82,8 @@ jobs:
           git add package.json package-lock.json
           git commit -m "Release: $VERSION"
           git push
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Create or update pull request
         if: github.event_name == 'push'
@@ -91,4 +100,4 @@ jobs:
               --body "Automated release PR for v$VERSION."
           fi
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
