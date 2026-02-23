@@ -1,0 +1,57 @@
+name: Release Version Sync
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [master]
+
+jobs:
+  sync-version:
+    if: startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Extract version from branch name
+        id: branch
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH#release/}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Read current version from package.json
+        id: pkg
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ "${{ steps.branch.outputs.version }}" = "${{ steps.pkg.outputs.version }}" ]; then
+            echo "Versions already match (${{ steps.pkg.outputs.version }}), nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version mismatch: branch=${{ steps.branch.outputs.version }} package.json=${{ steps.pkg.outputs.version }}"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update package.json version
+        if: steps.compare.outputs.skip == 'false'
+        run: npm version ${{ steps.branch.outputs.version }} --no-git-tag-version
+
+      - name: Update package-lock.json
+        if: steps.compare.outputs.skip == 'false'
+        run: npm install
+
+      - name: Commit and push
+        if: steps.compare.outputs.skip == 'false'
+        run: |
+          VERSION="${{ steps.branch.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Release: $VERSION"
+          git push
