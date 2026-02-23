@@ -1,25 +1,31 @@
 name: Release Version Sync
 
 on:
+  push:
+    branches: ['release/**']
   pull_request:
     types: [opened]
     branches: [master]
 
 jobs:
   sync-version:
-    if: startsWith(github.event.pull_request.head.ref, 'release/')
+    if: >-
+      github.event_name == 'push'
+      || startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      BRANCH: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ env.BRANCH }}
 
       - name: Extract version from branch name
         id: branch
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
+          BRANCH="${{ env.BRANCH }}"
           VERSION="${BRANCH#release/}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
