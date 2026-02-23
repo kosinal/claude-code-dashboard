@@ -7,6 +7,10 @@ on:
     types: [opened]
     branches: [master]
 
+concurrency:
+  group: release-version-sync-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
 jobs:
   sync-version:
     if: >-
@@ -22,11 +26,20 @@ jobs:
         with:
           ref: ${{ env.BRANCH }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
       - name: Extract version from branch name
         id: branch
         run: |
           BRANCH="${{ env.BRANCH }}"
           VERSION="${BRANCH#release/}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::Invalid semver in branch name: '$VERSION'"
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Read current version from package.json
@@ -46,11 +59,11 @@ jobs:
 
       - name: Update package.json version
         if: steps.compare.outputs.skip == 'false'
-        run: npm version ${{ steps.branch.outputs.version }} --no-git-tag-version
+        run: npm version "${{ steps.branch.outputs.version }}" --no-git-tag-version
 
       - name: Update package-lock.json
         if: steps.compare.outputs.skip == 'false'
-        run: npm install
+        run: npm install --package-lock-only
 
       - name: Commit and push
         if: steps.compare.outputs.skip == 'false'
@@ -59,5 +72,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
-          git commit -m "Release: $VERSION"
+          git commit -m "Release: $VERSION [skip ci]"
           git push
