@@ -25,9 +25,9 @@ export interface Store {
 }
 
 const EVENT_TO_STATUS: Record<string, SessionStatus> = {
-  SessionStart: "waiting",
+  SessionStart: "done",
   UserPromptSubmit: "running",
-  Stop: "waiting",
+  Stop: "done",
 };
 
 export function createStore(): Store {
