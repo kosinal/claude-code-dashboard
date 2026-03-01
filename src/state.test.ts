@@ -131,7 +131,7 @@ describe("createStore", () => {
     assert.equal(store.getSession("s1")?.cwd, "/second");
   });
 
-  it("PreToolUse transitions running to waiting", () => {
+  it("PreToolUse with interactive tool transitions to waiting", () => {
     const store = createStore();
     store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
     store.handleEvent({
@@ -142,9 +142,53 @@ describe("createStore", () => {
     const session = store.handleEvent({
       session_id: "s1",
       hook_event_name: "PreToolUse",
+      tool_name: "AskUserQuestion",
     });
     assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "AskUserQuestion");
+  });
+
+  it("PreToolUse with non-interactive tool stays running and shows tool name", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "UserPromptSubmit",
+    });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "Bash");
+  });
+
+  it("PreToolUse without tool_name falls back to PreToolUse display", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+    });
+    assert.equal(session?.status, "running");
     assert.equal(session?.lastEvent, "PreToolUse");
+  });
+
+  it("PreToolUse with ExitPlanMode transitions to waiting", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "UserPromptSubmit",
+    });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "ExitPlanMode",
+    });
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "ExitPlanMode");
   });
 
   it("Ping event does not create a session and returns null", () => {
