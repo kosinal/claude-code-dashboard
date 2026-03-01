@@ -99,4 +99,32 @@ describe("getDashboardHtml", () => {
     assert.ok(html.includes("setButtonsEnabled(false)"));
     assert.ok(html.includes("setButtonsEnabled(true)"));
   });
+
+  it("contains notification test banner container", () => {
+    assert.ok(html.includes('id="notifBanner"'));
+  });
+
+  it("contains notification banner CSS styles", () => {
+    assert.ok(html.includes(".notif-banner"));
+    assert.ok(html.includes(".notif-banner button"));
+  });
+
+  it("contains showNotifBanner and hideNotifBanner functions", () => {
+    assert.ok(html.includes("function showNotifBanner"));
+    assert.ok(html.includes("function hideNotifBanner"));
+  });
+
+  it("shows banner with test button when notifications toggled on", () => {
+    assert.ok(html.includes("Notifications enabled. Push button to test."));
+    assert.ok(html.includes('id="btnTestNotif"'));
+  });
+
+  it("fires test notification on button click", () => {
+    assert.ok(html.includes("Claude Code - Test"));
+    assert.ok(html.includes("Notifications are working!"));
+  });
+
+  it("auto-hides banner after 10 seconds", () => {
+    assert.ok(html.includes("setTimeout(hideNotifBanner, 10000)"));
+  });
 });
