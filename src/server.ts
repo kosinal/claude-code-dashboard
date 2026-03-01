@@ -56,7 +56,9 @@ export function createServer(options: ServerOptions): DashboardServer {
             return;
           }
           store.handleEvent(payload);
-          broadcast();
+          if (payload.hook_event_name !== "Ping") {
+            broadcast();
+          }
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
         } catch {

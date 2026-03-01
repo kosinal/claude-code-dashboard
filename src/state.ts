@@ -38,6 +38,10 @@ export function createStore(): Store {
     handleEvent(payload: HookPayload): Session | null {
       const { session_id, hook_event_name, cwd } = payload;
 
+      if (hook_event_name === "Ping") {
+        return null;
+      }
+
       if (hook_event_name === "SessionEnd") {
         sessions.delete(session_id);
         return null;
