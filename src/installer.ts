@@ -133,7 +133,7 @@ async function waitForServer(maxWaitMs = 10000) {
   let delay = 100;
   while (Date.now() - start < maxWaitMs) {
     try {
-      await postHook('{"session_id":"ping","hook_event_name":"Ping"}');
+      await httpPing();
       return true;
     } catch {
       await new Promise(r => setTimeout(r, delay));

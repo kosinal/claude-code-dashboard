@@ -348,6 +348,88 @@ describe("HTTP Server", () => {
     assert.ok(sseData.includes("event: shutdown"));
   });
 
+  it("POST /api/hook with Ping returns 200 but creates no session", async () => {
+    const { port } = await startServer();
+    const res = await fetch(
+      port,
+      "POST",
+      "/api/hook",
+      JSON.stringify({
+        session_id: "ping",
+        hook_event_name: "Ping",
+      }),
+    );
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(res.body);
+    assert.equal(parsed.ok, true);
+
+    // Verify no session was created
+    const sessions = await fetch(port, "GET", "/api/sessions");
+    const list = JSON.parse(sessions.body);
+    assert.equal(list.length, 0);
+  });
+
+  it("Ping event does not trigger SSE broadcast", async () => {
+    const { port } = await startServer();
+
+    const firstUpdate = await new Promise<string>((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/events",
+          method: "GET",
+        },
+        (res) => {
+          let buf = "";
+          res.on("data", (chunk) => {
+            buf += chunk;
+            // Wait for init + first update event
+            const events = buf.split("\n\n").filter(Boolean);
+            if (events.length >= 2) {
+              req.destroy();
+              resolve(events[1]);
+            }
+          });
+        },
+      );
+      req.on("error", (err) => {
+        if ((err as NodeJS.ErrnoException).code !== "ECONNRESET") {
+          reject(err);
+        }
+      });
+      req.end();
+
+      // Send a Ping first, then a real SessionStart
+      setTimeout(async () => {
+        await fetch(
+          port,
+          "POST",
+          "/api/hook",
+          JSON.stringify({
+            session_id: "ping",
+            hook_event_name: "Ping",
+          }),
+        );
+        // Send a real event shortly after
+        await fetch(
+          port,
+          "POST",
+          "/api/hook",
+          JSON.stringify({
+            session_id: "real-session",
+            hook_event_name: "SessionStart",
+            cwd: "/real",
+          }),
+        );
+      }, 100);
+    });
+
+    // The first SSE update should be from the real session, not the Ping
+    assert.ok(firstUpdate.includes("event: update"));
+    assert.ok(firstUpdate.includes("real-session"));
+  });
+
   it("SSE clients receive restart event", async () => {
     const { port } = await startServer();
 
