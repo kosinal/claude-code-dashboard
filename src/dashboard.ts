@@ -154,6 +154,43 @@ export function getDashboardHtml(): string {
 
   .connection-dot.connected { background: #3fb950; }
 
+  .notif-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(210, 153, 34, 0.15);
+    border: 1px solid #d29922;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #d29922;
+    animation: bannerFadeIn 0.2s ease-out;
+  }
+
+  .notif-banner button {
+    background: #d29922;
+    color: #0d1117;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-left: 12px;
+    transition: background 0.2s;
+  }
+
+  .notif-banner button:hover {
+    background: #e3b341;
+  }
+
+  @keyframes bannerFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   .overlay {
     position: fixed;
     top: 0;
@@ -377,6 +414,7 @@ export function getDashboardHtml(): string {
     </div>
   </div>
 </header>
+<div id="notifBanner"></div>
 <div id="overlayContainer"></div>
 <main id="app">
   <div class="empty-state">
@@ -398,18 +436,51 @@ export function getDashboardHtml(): string {
   var btnStop = document.getElementById('btnStop');
   var btnRestart = document.getElementById('btnRestart');
   var notifToggle = document.getElementById('notifToggle');
+  var notifBanner = document.getElementById('notifBanner');
   var notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
   var sessions = [];
   var previousStatuses = {};
   var initialized = false;
   var es = null;
+  var bannerTimer = null;
+
+  function showNotifBanner() {
+    if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+    notifBanner.innerHTML =
+      '<div class="notif-banner">' +
+        '<span>Notifications enabled. Push button to test.</span>' +
+        '<button id="btnTestNotif">Test</button>' +
+      '</div>';
+    document.getElementById('btnTestNotif').onclick = function() {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Claude Code - Test', { body: 'Notifications are working!' });
+      } else if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(function(p) {
+          if (p === 'granted') {
+            new Notification('Claude Code - Test', { body: 'Notifications are working!' });
+          }
+        });
+      }
+    };
+    bannerTimer = setTimeout(hideNotifBanner, 10000);
+  }
+
+  function hideNotifBanner() {
+    notifBanner.innerHTML = '';
+    if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+  }
 
   notifToggle.checked = notificationsEnabled;
   notifToggle.addEventListener('change', function() {
     notificationsEnabled = notifToggle.checked;
     localStorage.setItem('notificationsEnabled', notificationsEnabled ? 'true' : 'false');
-    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (notificationsEnabled) {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+      showNotifBanner();
+    } else {
+      hideNotifBanner();
     }
   });
 
