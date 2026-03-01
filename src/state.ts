@@ -28,8 +28,9 @@ const EVENT_TO_STATUS: Record<string, SessionStatus> = {
   SessionStart: "done",
   UserPromptSubmit: "running",
   Stop: "done",
-  PreToolUse: "waiting",
 };
+
+const INTERACTIVE_TOOLS = new Set(["ExitPlanMode", "AskUserQuestion"]);
 
 export function createStore(): Store {
   const sessions = new Map<string, Session>();
@@ -47,31 +48,38 @@ export function createStore(): Store {
         return null;
       }
 
-      if (hook_event_name === "Ping") {
-        return null;
-      }
+      let status: SessionStatus;
+      let displayEvent: string;
 
-      const status = EVENT_TO_STATUS[hook_event_name];
-      if (!status) {
-        const existing = sessions.get(session_id);
-        if (existing) return existing;
-        const session: Session = {
-          sessionId: session_id,
-          status: "waiting",
-          cwd: cwd ?? "",
-          lastEvent: hook_event_name,
-          updatedAt: Date.now(),
-          startedAt: Date.now(),
-        };
-        sessions.set(session_id, session);
-        return session;
+      if (hook_event_name === "PreToolUse") {
+        const toolName = typeof payload.tool_name === "string" ? payload.tool_name : "";
+        displayEvent = toolName || hook_event_name;
+        status = INTERACTIVE_TOOLS.has(toolName) ? "waiting" : "running";
+      } else {
+        const mapped = EVENT_TO_STATUS[hook_event_name];
+        if (!mapped) {
+          const existing = sessions.get(session_id);
+          if (existing) return existing;
+          const session: Session = {
+            sessionId: session_id,
+            status: "waiting",
+            cwd: cwd ?? "",
+            lastEvent: hook_event_name,
+            updatedAt: Date.now(),
+            startedAt: Date.now(),
+          };
+          sessions.set(session_id, session);
+          return session;
+        }
+        status = mapped;
+        displayEvent = hook_event_name;
       }
 
       const now = Date.now();
       const existing = sessions.get(session_id);
       if (existing) {
         existing.status = status;
-        existing.lastEvent = hook_event_name;
+        existing.lastEvent = displayEvent;
         existing.updatedAt = now;
         if (cwd) existing.cwd = cwd;
         return existing;
@@ -81,7 +89,7 @@ export function createStore(): Store {
         sessionId: session_id,
         status,
         cwd: cwd ?? "",
-        lastEvent: hook_event_name,
+        lastEvent: displayEvent,
         updatedAt: now,
         startedAt: now,
       };

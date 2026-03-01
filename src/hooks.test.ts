@@ -47,13 +47,13 @@ describe("installHooks", () => {
     assert.ok(settings.hooks.PreToolUse);
   });
 
-  it("PreToolUse hook has correct matcher for interactive tools", () => {
+  it("PreToolUse hook captures all tools without matcher", () => {
     installHooks(8377, tmpDir);
     const settings = readSettings() as HookSettings & {
       hooks: Record<string, Array<{ matcher?: string; hooks: Array<{ statusMessage: string }> }>>;
     };
     const group = settings.hooks.PreToolUse[0];
-    assert.equal(group.matcher, "ExitPlanMode|AskUserQuestion");
+    assert.equal(group.matcher, undefined);
     assert.equal(group.hooks[0].statusMessage, "__claude_code_dashboard_quick__");
   });
 

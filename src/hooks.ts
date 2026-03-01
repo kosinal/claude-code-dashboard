@@ -7,7 +7,6 @@ const MARKER_INSTALL = "__claude_code_dashboard_install__";
 const MARKER_LEGACY = "__claude_code_dashboard__";
 
 const HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"] as const;
-const INTERACTIVE_TOOLS_MATCHER = "ExitPlanMode|AskUserQuestion";
 
 interface HookEntry {
   type: string;
@@ -137,12 +136,11 @@ export function installHooks(port: number, configDir?: string): void {
     });
   }
 
-  // PreToolUse with matcher for interactive tools (plan approval, user questions)
+  // PreToolUse for all tools (captures tool name for dashboard display)
   if (!settings.hooks.PreToolUse) {
     settings.hooks.PreToolUse = [];
   }
   settings.hooks.PreToolUse.push({
-    matcher: INTERACTIVE_TOOLS_MATCHER,
     hooks: [
       {
         type: "command",
@@ -184,12 +182,11 @@ export function installHooksWithCommand(command: string, configDir?: string): vo
     });
   }
 
-  // PreToolUse with matcher for interactive tools (plan approval, user questions)
+  // PreToolUse for all tools (captures tool name for dashboard display)
   if (!settings.hooks.PreToolUse) {
     settings.hooks.PreToolUse = [];
   }
   settings.hooks.PreToolUse.push({
-    matcher: INTERACTIVE_TOOLS_MATCHER,
     hooks: [
       {
         type: "command",
