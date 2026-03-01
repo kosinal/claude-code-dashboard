@@ -147,26 +147,31 @@ describe("createStore", () => {
     assert.equal(session?.lastEvent, "PreToolUse");
   });
 
-  it("Ping event is ignored and creates no session", () => {
+  it("Ping event does not create a session and returns null", () => {
     const store = createStore();
     const result = store.handleEvent({
-      session_id: "ping",
+      session_id: "s1",
       hook_event_name: "Ping",
     });
     assert.equal(result, null);
     assert.equal(store.getAllSessions().length, 0);
   });
 
-  it("Ping event does not delete an existing session", () => {
+  it("Ping event does not modify an existing session", () => {
     const store = createStore();
-    store.handleEvent({ session_id: "ping", hook_event_name: "SessionStart" });
-    assert.equal(store.getAllSessions().length, 1);
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "SessionStart",
+      cwd: "/project",
+    });
     const result = store.handleEvent({
-      session_id: "ping",
+      session_id: "s1",
       hook_event_name: "Ping",
     });
     assert.equal(result, null);
-    assert.equal(store.getAllSessions().length, 1);
+    const session = store.getSession("s1");
+    assert.equal(session?.status, "done");
+    assert.equal(session?.lastEvent, "SessionStart");
   });
 
   it("handles unknown event gracefully", () => {

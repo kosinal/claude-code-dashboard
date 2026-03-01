@@ -47,6 +47,10 @@ export function createStore(): Store {
         return null;
       }
 
+      if (hook_event_name === "Ping") {
+        return null;
+      }
+
       const status = EVENT_TO_STATUS[hook_event_name];
       if (!status) {
         const existing = sessions.get(session_id);
