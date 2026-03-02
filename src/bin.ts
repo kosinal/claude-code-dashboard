@@ -199,12 +199,19 @@ function main(): void {
   const { port, command, noHooks, noOpen } = parseArgs(process.argv);
 
   if (command === "install") {
-    install(port);
+    (async () => {
+      await stopServer();
+      uninstall();
+      install(port);
+    })();
     return;
   }
 
   if (command === "uninstall") {
-    uninstall();
+    (async () => {
+      await stopServer();
+      uninstall();
+    })();
     return;
   }
 
