@@ -203,7 +203,10 @@ function main(): void {
       await stopServer();
       uninstall();
       install(port);
-    })();
+    })().catch((err) => {
+      console.error("Install failed:", err);
+      process.exit(1);
+    });
     return;
   }
 
@@ -211,7 +214,10 @@ function main(): void {
     (async () => {
       await stopServer();
       uninstall();
-    })();
+    })().catch((err) => {
+      console.error("Uninstall failed:", err);
+      process.exit(1);
+    });
     return;
   }
 
