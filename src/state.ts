@@ -30,7 +30,14 @@ const EVENT_TO_STATUS: Record<string, SessionStatus> = {
   Stop: "done",
 };
 
-const INTERACTIVE_TOOLS = new Set(["ExitPlanMode", "AskUserQuestion"]);
+const INTERACTIVE_TOOLS = new Set([
+  "ExitPlanMode",
+  "AskUserQuestion",
+  "Bash",
+  "Write",
+  "Edit",
+  "NotebookEdit",
+]);
 
 export function createStore(): Store {
   const sessions = new Map<string, Session>();
