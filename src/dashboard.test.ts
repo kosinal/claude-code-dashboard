@@ -127,4 +127,14 @@ describe("getDashboardHtml", () => {
   it("auto-hides banner after 10 seconds", () => {
     assert.ok(html.includes("setTimeout(hideNotifBanner, 10000)"));
   });
+
+  it("includes version badge when version is provided", () => {
+    const htmlWithVersion = getDashboardHtml("1.2.3");
+    assert.ok(htmlWithVersion.includes("1.2.3"));
+    assert.ok(htmlWithVersion.includes("version-badge"));
+  });
+
+  it("omits version badge element when no version is provided", () => {
+    assert.ok(!html.includes('<span class="version-badge">'));
+  });
 });

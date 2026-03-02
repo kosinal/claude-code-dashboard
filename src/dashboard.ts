@@ -1,4 +1,4 @@
-export function getDashboardHtml(): string {
+export function getDashboardHtml(version?: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,6 +29,13 @@ export function getDashboardHtml(): string {
     font-size: 20px;
     font-weight: 600;
     color: #f0f6fc;
+  }
+
+  .version-badge {
+    font-size: 12px;
+    font-weight: 400;
+    color: #6e7681;
+    margin-left: 8px;
   }
 
   .header-right {
@@ -399,7 +406,7 @@ export function getDashboardHtml(): string {
 </head>
 <body>
 <header>
-  <h1>Claude Code Dashboard</h1>
+  <h1>Claude Code Dashboard${version ? `<span class="version-badge">v${version}</span>` : ""}</h1>
   <div class="header-right">
     <div class="notification-toggle">
       <label class="toggle-switch">

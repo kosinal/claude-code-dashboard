@@ -10,6 +10,7 @@ export interface DashboardServer {
 
 export interface ServerOptions {
   store: Store;
+  version?: string;
   idleTimeoutMs?: number;
   cleanupIntervalMs?: number;
   onShutdown?: () => void;
@@ -17,7 +18,7 @@ export interface ServerOptions {
 }
 
 export function createServer(options: ServerOptions): DashboardServer {
-  const { store, onShutdown, onRestart } = options;
+  const { store, version, onShutdown, onRestart } = options;
   const idleTimeoutMs = options.idleTimeoutMs ?? 5 * 60 * 1000;
   const cleanupIntervalMs = options.cleanupIntervalMs ?? 60_000;
   const sseClients = new Set<http.ServerResponse>();
@@ -38,7 +39,7 @@ export function createServer(options: ServerOptions): DashboardServer {
 
     if (req.method === "GET" && pathname === "/") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(getDashboardHtml());
+      res.end(getDashboardHtml(version));
       return;
     }
 

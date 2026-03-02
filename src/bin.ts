@@ -1,10 +1,25 @@
 import { exec, spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import * as http from "node:http";
 import * as net from "node:net";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { installHooks, removeHooks } from "./hooks.ts";
 import { install, readLockFile, removeLockFile, uninstall, writeLockFile } from "./installer.ts";
 import { createServer } from "./server.ts";
 import { createStore } from "./state.ts";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function readVersion(): string | undefined {
+  try {
+    const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+    return pkg.version;
+  } catch {
+    return undefined;
+  }
+}
 
 const DEFAULT_PORT = 8377;
 
@@ -244,6 +259,7 @@ function main(): void {
 
 function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
   const store = createStore();
+  const version = readVersion();
 
   let cleanedUp = false;
   function cleanup() {
@@ -263,6 +279,7 @@ function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
 
   const dashboard = createServer({
     store,
+    version,
     onShutdown() {
       cleanup();
       process.exit(0);
