@@ -158,10 +158,42 @@ describe("createStore", () => {
     const session = store.handleEvent({
       session_id: "s1",
       hook_event_name: "PreToolUse",
-      tool_name: "Bash",
+      tool_name: "Read",
     });
     assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "Read");
+  });
+
+  it("PreToolUse with Bash transitions to waiting", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "UserPromptSubmit",
+    });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(session?.status, "waiting");
     assert.equal(session?.lastEvent, "Bash");
+  });
+
+  it("PreToolUse with Write transitions to waiting", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "UserPromptSubmit",
+    });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Write",
+    });
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "Write");
   });
 
   it("PreToolUse without tool_name falls back to PreToolUse display", () => {
