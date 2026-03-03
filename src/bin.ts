@@ -199,12 +199,25 @@ function main(): void {
   const { port, command, noHooks, noOpen } = parseArgs(process.argv);
 
   if (command === "install") {
-    install(port);
+    (async () => {
+      await stopServer();
+      uninstall();
+      install(port);
+    })().catch((err) => {
+      console.error("Install failed:", err);
+      process.exit(1);
+    });
     return;
   }
 
   if (command === "uninstall") {
-    uninstall();
+    (async () => {
+      await stopServer();
+      uninstall();
+    })().catch((err) => {
+      console.error("Uninstall failed:", err);
+      process.exit(1);
+    });
     return;
   }
 
