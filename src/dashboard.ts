@@ -1,4 +1,15 @@
+declare const __VERSION__: string;
+
+function getVersion(): string {
+  try {
+    return __VERSION__;
+  } catch {
+    return "dev";
+  }
+}
+
 export function getDashboardHtml(): string {
+  const version = getVersion();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,6 +40,13 @@ export function getDashboardHtml(): string {
     font-size: 20px;
     font-weight: 600;
     color: #f0f6fc;
+  }
+
+  .version {
+    font-size: 12px;
+    font-weight: 400;
+    color: #6e7681;
+    margin-left: 8px;
   }
 
   .header-right {
@@ -399,7 +417,7 @@ export function getDashboardHtml(): string {
 </head>
 <body>
 <header>
-  <h1>Claude Code Dashboard</h1>
+  <h1>Claude Code Dashboard <span class="version">v${version}</span></h1>
   <div class="header-right">
     <div class="notification-toggle">
       <label class="toggle-switch">
