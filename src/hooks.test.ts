@@ -37,7 +37,7 @@ describe("installHooks", () => {
     assert.ok(settings.hooks);
   });
 
-  it("creates all 5 hook events including PreToolUse", () => {
+  it("creates all 7 hook events including PreToolUse, PermissionRequest, and PostToolUse", () => {
     installHooks(8377, tmpDir);
     const settings = readSettings() as { hooks: Record<string, unknown[]> };
     assert.ok(settings.hooks.SessionStart);
@@ -45,6 +45,8 @@ describe("installHooks", () => {
     assert.ok(settings.hooks.Stop);
     assert.ok(settings.hooks.SessionEnd);
     assert.ok(settings.hooks.PreToolUse);
+    assert.ok(settings.hooks.PermissionRequest);
+    assert.ok(settings.hooks.PostToolUse);
   });
 
   it("PreToolUse hook captures all tools without matcher", () => {

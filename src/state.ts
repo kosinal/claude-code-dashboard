@@ -61,6 +61,14 @@ export function createStore(): Store {
         const toolName = typeof payload.tool_name === "string" ? payload.tool_name : "";
         displayEvent = toolName || hook_event_name;
         status = INTERACTIVE_TOOLS.has(toolName) ? "waiting" : "running";
+      } else if (hook_event_name === "PermissionRequest") {
+        const toolName = typeof payload.tool_name === "string" ? payload.tool_name : "";
+        displayEvent = toolName || hook_event_name;
+        status = "waiting";
+      } else if (hook_event_name === "PostToolUse") {
+        const toolName = typeof payload.tool_name === "string" ? payload.tool_name : "";
+        displayEvent = toolName || hook_event_name;
+        status = "running";
       } else {
         const mapped = EVENT_TO_STATUS[hook_event_name];
         if (!mapped) {

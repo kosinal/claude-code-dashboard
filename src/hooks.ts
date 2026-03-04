@@ -6,7 +6,14 @@ const MARKER_QUICK = "__claude_code_dashboard_quick__";
 const MARKER_INSTALL = "__claude_code_dashboard_install__";
 const MARKER_LEGACY = "__claude_code_dashboard__";
 
-const HOOK_EVENTS = ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"] as const;
+const HOOK_EVENTS = [
+  "SessionStart",
+  "UserPromptSubmit",
+  "Stop",
+  "SessionEnd",
+  "PermissionRequest",
+  "PostToolUse",
+] as const;
 
 interface HookEntry {
   type: string;
