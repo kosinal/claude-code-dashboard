@@ -164,7 +164,7 @@ describe("createStore", () => {
     assert.equal(session?.lastEvent, "Read");
   });
 
-  it("PreToolUse with Bash transitions to waiting", () => {
+  it("PreToolUse with Bash stays running", () => {
     const store = createStore();
     store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
     store.handleEvent({
@@ -176,7 +176,7 @@ describe("createStore", () => {
       hook_event_name: "PreToolUse",
       tool_name: "Bash",
     });
-    assert.equal(session?.status, "waiting");
+    assert.equal(session?.status, "running");
     assert.equal(session?.lastEvent, "Bash");
   });
 

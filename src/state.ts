@@ -33,7 +33,6 @@ const EVENT_TO_STATUS: Record<string, SessionStatus> = {
 const INTERACTIVE_TOOLS = new Set([
   "ExitPlanMode",
   "AskUserQuestion",
-  "Bash",
   "Write",
   "Edit",
   "NotebookEdit",
