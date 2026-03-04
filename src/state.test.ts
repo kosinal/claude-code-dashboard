@@ -260,6 +260,110 @@ describe("createStore", () => {
     assert.equal(session?.status, "waiting");
   });
 
+  it("PermissionRequest transitions to waiting with tool name", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "PreToolUse", tool_name: "Bash" });
+    assert.equal(store.getSession("s1")?.status, "running");
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    });
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "Bash");
+  });
+
+  it("PostToolUse transitions to running with tool name", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "PreToolUse", tool_name: "Bash" });
+    store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    });
+    assert.equal(store.getSession("s1")?.status, "waiting");
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "Bash");
+  });
+
+  it("Full approval flow: PreToolUse → PermissionRequest → PostToolUse", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+
+    const afterPre = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(afterPre?.status, "running");
+
+    const afterPerm = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    });
+    assert.equal(afterPerm?.status, "waiting");
+
+    const afterPost = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(afterPost?.status, "running");
+  });
+
+  it("Auto-approved flow: PreToolUse → PostToolUse (no PermissionRequest)", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+
+    const afterPre = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(afterPre?.status, "running");
+
+    const afterPost = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+    });
+    assert.equal(afterPost?.status, "running");
+  });
+
+  it("PermissionRequest without tool_name falls back to event name", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PermissionRequest",
+    });
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "PermissionRequest");
+  });
+
+  it("PostToolUse without tool_name falls back to event name", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PostToolUse",
+    });
+    assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "PostToolUse");
+  });
+
   it("removeSession deletes an existing session", () => {
     const store = createStore();
     store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
