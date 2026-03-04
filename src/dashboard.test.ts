@@ -10,6 +10,11 @@ describe("getDashboardHtml", () => {
     assert.ok(html.includes("</html>"));
   });
 
+  it("contains version display in header", () => {
+    assert.ok(html.includes('class="version"'));
+    assert.match(html, /v\w+/);
+  });
+
   it("contains EventSource for SSE", () => {
     assert.ok(html.includes("EventSource"));
     assert.ok(html.includes("/api/events"));
