@@ -33,7 +33,7 @@
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kosinal/claude-code-dashboard"
+    "url": "git+https://github.com/kosinal/claude-code-dashboard.git"
   },
   "homepage": "https://github.com/kosinal/claude-code-dashboard#readme",
   "bugs": {
