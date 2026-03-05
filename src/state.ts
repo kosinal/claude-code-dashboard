@@ -30,13 +30,9 @@ const EVENT_TO_STATUS: Record<string, SessionStatus> = {
   Stop: "done",
 };
 
-const INTERACTIVE_TOOLS = new Set([
-  "ExitPlanMode",
-  "AskUserQuestion",
-  "Write",
-  "Edit",
-  "NotebookEdit",
-]);
+const ALWAYS_INTERACTIVE_TOOLS = new Set(["ExitPlanMode", "AskUserQuestion"]);
+
+const EDIT_TOOLS = new Set(["Write", "Edit", "NotebookEdit"]);
 
 export function createStore(): Store {
   const sessions = new Map<string, Session>();
@@ -60,7 +56,14 @@ export function createStore(): Store {
       if (hook_event_name === "PreToolUse") {
         const toolName = typeof payload.tool_name === "string" ? payload.tool_name : "";
         displayEvent = toolName || hook_event_name;
-        status = INTERACTIVE_TOOLS.has(toolName) ? "waiting" : "running";
+        const permissionMode =
+          typeof payload.permission_mode === "string" ? payload.permission_mode : "";
+        const isEditAutoApproved = permissionMode === "acceptEdits" && EDIT_TOOLS.has(toolName);
+        status =
+          !isEditAutoApproved &&
+          (ALWAYS_INTERACTIVE_TOOLS.has(toolName) || EDIT_TOOLS.has(toolName))
+            ? "waiting"
+            : "running";
       } else if (hook_event_name === "PermissionRequest") {
         const toolName = typeof payload.tool_name === "string" ? payload.tool_name : "";
         displayEvent = toolName || hook_event_name;
