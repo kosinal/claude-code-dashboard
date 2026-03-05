@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import * as http from "node:http";
 import { afterEach, describe, it } from "node:test";
+import { createLogger } from "./logging.ts";
 import { createServer, type DashboardServer, type ServerOptions } from "./server.ts";
 import { createStore } from "./state.ts";
 
@@ -11,8 +12,10 @@ function startServer(
 ): Promise<{ port: number; dashboard: DashboardServer }> {
   return new Promise((resolve) => {
     const store = createStore();
+    const logger = createLogger();
     const d = createServer({
       store,
+      logger,
       onShutdown: opts?.onShutdown,
       onRestart: opts?.onRestart,
       idleTimeoutMs: opts?.idleTimeoutMs,

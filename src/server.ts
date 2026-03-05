@@ -1,5 +1,6 @@
 import * as http from "node:http";
 import { getDashboardHtml } from "./dashboard.ts";
+import type { Logger } from "./logging.ts";
 import type { HookPayload, Store } from "./state.ts";
 
 export interface DashboardServer {
@@ -10,6 +11,7 @@ export interface DashboardServer {
 
 export interface ServerOptions {
   store: Store;
+  logger: Logger;
   idleTimeoutMs?: number;
   cleanupIntervalMs?: number;
   onShutdown?: () => void;
@@ -17,7 +19,7 @@ export interface ServerOptions {
 }
 
 export function createServer(options: ServerOptions): DashboardServer {
-  const { store, onShutdown, onRestart } = options;
+  const { store, logger, onShutdown, onRestart } = options;
   const idleTimeoutMs = options.idleTimeoutMs ?? 5 * 60 * 1000;
   const cleanupIntervalMs = options.cleanupIntervalMs ?? 60_000;
   const sseClients = new Set<http.ServerResponse>();
@@ -55,7 +57,8 @@ export function createServer(options: ServerOptions): DashboardServer {
             res.end(JSON.stringify({ error: "Missing session_id or hook_event_name" }));
             return;
           }
-          store.handleEvent(payload);
+          const session = store.handleEvent(payload);
+          logger.logEvent(payload, session);
           if (payload.hook_event_name !== "Ping") {
             broadcast();
           }
@@ -89,6 +92,36 @@ export function createServer(options: ServerOptions): DashboardServer {
     if (req.method === "GET" && pathname === "/api/sessions") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(store.getAllSessions()));
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/logging") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ enabled: logger.isEnabled() }));
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/logging") {
+      let body = "";
+      req.on("data", (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on("end", () => {
+        try {
+          const { enabled } = JSON.parse(body);
+          if (typeof enabled !== "boolean") {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Missing boolean 'enabled'" }));
+            return;
+          }
+          logger.setEnabled(enabled);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ enabled: logger.isEnabled() }));
+        } catch {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Invalid JSON" }));
+        }
+      });
       return;
     }
 

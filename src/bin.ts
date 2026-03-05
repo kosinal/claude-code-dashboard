@@ -3,6 +3,7 @@ import * as http from "node:http";
 import * as net from "node:net";
 import { installHooks, removeHooks } from "./hooks.ts";
 import { install, readLockFile, removeLockFile, uninstall, writeLockFile } from "./installer.ts";
+import { createLogger } from "./logging.ts";
 import { createServer } from "./server.ts";
 import { createStore } from "./state.ts";
 
@@ -257,6 +258,7 @@ function main(): void {
 
 function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
   const store = createStore();
+  const logger = createLogger();
 
   let cleanedUp = false;
   function cleanup() {
@@ -276,6 +278,7 @@ function startDashboard(port: number, noHooks: boolean, noOpen: boolean): void {
 
   const dashboard = createServer({
     store,
+    logger,
     onShutdown() {
       cleanup();
       process.exit(0);

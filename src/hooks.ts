@@ -13,6 +13,8 @@ const HOOK_EVENTS = [
   "SessionEnd",
   "PermissionRequest",
   "PostToolUse",
+  "Notification",
+  "SubagentStop",
 ] as const;
 
 interface HookEntry {
