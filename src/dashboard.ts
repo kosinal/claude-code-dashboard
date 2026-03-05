@@ -442,6 +442,13 @@ export function getDashboardHtml(): string {
   </div>
 </main>
 <footer>
+  <div class="notification-toggle">
+    <label class="toggle-switch">
+      <input type="checkbox" id="logToggle">
+      <span class="toggle-slider"></span>
+    </label>
+    <label class="toggle-label" for="logToggle">Logging</label>
+  </div>
   <button id="btnRestart" disabled>Restart</button>
   <button id="btnStop" class="btn-danger" disabled>Stop</button>
 </footer>
@@ -455,6 +462,7 @@ export function getDashboardHtml(): string {
   var btnRestart = document.getElementById('btnRestart');
   var notifToggle = document.getElementById('notifToggle');
   var notifBanner = document.getElementById('notifBanner');
+  var logToggle = document.getElementById('logToggle');
   var notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
   var sessions = [];
   var previousStatuses = {};
@@ -719,6 +727,34 @@ export function getDashboardHtml(): string {
       setButtonsEnabled(false);
     };
   }
+
+  // Logging toggle
+  function fetchLoggingStatus() {
+    var req = new XMLHttpRequest();
+    req.open('GET', '/api/logging', true);
+    req.onload = function() {
+      if (req.status === 200) {
+        var data = JSON.parse(req.responseText);
+        logToggle.checked = data.enabled;
+      }
+    };
+    req.send();
+  }
+
+  logToggle.addEventListener('change', function() {
+    var req = new XMLHttpRequest();
+    req.open('POST', '/api/logging', true);
+    req.setRequestHeader('Content-Type', 'application/json');
+    req.onload = function() {
+      if (req.status === 200) {
+        var data = JSON.parse(req.responseText);
+        logToggle.checked = data.enabled;
+      }
+    };
+    req.send(JSON.stringify({ enabled: logToggle.checked }));
+  });
+
+  fetchLoggingStatus();
 
   // Update time-ago values every 10 seconds
   setInterval(render, 10000);
