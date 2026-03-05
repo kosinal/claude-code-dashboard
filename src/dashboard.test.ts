@@ -58,6 +58,12 @@ describe("getDashboardHtml", () => {
     assert.ok(html.includes("claude-waiting-"));
   });
 
+  it("only notifies for interactive tools, not Bash", () => {
+    assert.ok(html.includes("NOTIFY_TOOLS"));
+    assert.ok(html.includes("NOTIFY_TOOLS[s.lastEvent]"));
+    assert.ok(html.includes("AskUserQuestion"));
+  });
+
   it("contains Stop and Restart buttons", () => {
     assert.ok(html.includes('id="btnStop"'));
     assert.ok(html.includes('id="btnRestart"'));
