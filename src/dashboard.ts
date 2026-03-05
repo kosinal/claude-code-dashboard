@@ -516,6 +516,7 @@ export function getDashboardHtml(): string {
 
   var STATUS_LABELS = { running: 'Running', waiting: 'Waiting for input', done: 'Done' };
   var STATUS_ORDER = { running: 0, waiting: 1, done: 2 };
+  var NOTIFY_TOOLS = { ExitPlanMode: 1, AskUserQuestion: 1, Write: 1, Edit: 1, NotebookEdit: 1 };
 
   function timeAgo(ts) {
     var diff = Math.floor((Date.now() - ts) / 1000);
@@ -582,7 +583,7 @@ export function getDashboardHtml(): string {
     }
     if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
       newSessions.forEach(function(s) {
-        if (s.status === 'waiting' && previousStatuses[s.sessionId] !== 'waiting') {
+        if (s.status === 'waiting' && previousStatuses[s.sessionId] !== 'waiting' && NOTIFY_TOOLS[s.lastEvent]) {
           new Notification('Claude Code - Waiting for input', {
             body: folderName(s.cwd),
             tag: 'claude-waiting-' + s.sessionId
