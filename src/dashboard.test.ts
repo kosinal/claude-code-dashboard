@@ -58,10 +58,10 @@ describe("getDashboardHtml", () => {
     assert.ok(html.includes("claude-waiting-"));
   });
 
-  it("only notifies for interactive tools, not Bash", () => {
-    assert.ok(html.includes("NOTIFY_TOOLS"));
-    assert.ok(html.includes("NOTIFY_TOOLS[s.lastEvent]"));
-    assert.ok(html.includes("AskUserQuestion"));
+  it("notifies for all waiting status transitions", () => {
+    assert.ok(html.includes("s.status === 'waiting'"));
+    assert.ok(html.includes("previousStatuses[s.sessionId] !== 'waiting'"));
+    assert.ok(!html.includes("NOTIFY_TOOLS"));
   });
 
   it("contains Stop and Restart buttons", () => {
