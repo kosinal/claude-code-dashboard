@@ -58,7 +58,9 @@ export function createStore(): Store {
         displayEvent = toolName || hook_event_name;
         const permissionMode =
           typeof payload.permission_mode === "string" ? payload.permission_mode : "";
-        const isEditAutoApproved = permissionMode === "acceptEdits" && EDIT_TOOLS.has(toolName);
+        const isEditAutoApproved =
+          (permissionMode === "acceptEdits" || permissionMode === "plan") &&
+          EDIT_TOOLS.has(toolName);
         status =
           !isEditAutoApproved &&
           (ALWAYS_INTERACTIVE_TOOLS.has(toolName) || EDIT_TOOLS.has(toolName))

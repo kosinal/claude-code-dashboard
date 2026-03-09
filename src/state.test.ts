@@ -252,6 +252,62 @@ describe("createStore", () => {
     assert.equal(session?.lastEvent, "AskUserQuestion");
   });
 
+  it("PreToolUse with Write stays running in plan mode", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Write",
+      permission_mode: "plan",
+    });
+    assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "Write");
+  });
+
+  it("PreToolUse with Edit stays running in plan mode", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "Edit",
+      permission_mode: "plan",
+    });
+    assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "Edit");
+  });
+
+  it("PreToolUse with NotebookEdit stays running in plan mode", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "NotebookEdit",
+      permission_mode: "plan",
+    });
+    assert.equal(session?.status, "running");
+    assert.equal(session?.lastEvent, "NotebookEdit");
+  });
+
+  it("PreToolUse with ExitPlanMode still transitions to waiting in plan mode", () => {
+    const store = createStore();
+    store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
+    store.handleEvent({ session_id: "s1", hook_event_name: "UserPromptSubmit" });
+    const session = store.handleEvent({
+      session_id: "s1",
+      hook_event_name: "PreToolUse",
+      tool_name: "ExitPlanMode",
+      permission_mode: "plan",
+    });
+    assert.equal(session?.status, "waiting");
+    assert.equal(session?.lastEvent, "ExitPlanMode");
+  });
+
   it("PreToolUse with Edit transitions to waiting in default mode", () => {
     const store = createStore();
     store.handleEvent({ session_id: "s1", hook_event_name: "SessionStart" });
