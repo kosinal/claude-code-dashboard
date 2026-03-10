@@ -123,10 +123,7 @@ export function installHooks(port: number, configDir?: string): void {
     settings.hooks = {};
   }
 
-  const command =
-    process.platform === "win32"
-      ? `powershell -NoProfile -Command "$input | Invoke-WebRequest -Uri http://localhost:${port}/api/hook -Method POST -ContentType 'application/json' -ErrorAction SilentlyContinue | Out-Null"`
-      : `curl -s -X POST -H "Content-Type: application/json" -d @- http://localhost:${port}/api/hook > /dev/null 2>&1`;
+  const command = `npx @kosinal/claude-code-dashboard hook --port ${port}`;
 
   for (const event of HOOK_EVENTS) {
     if (!settings.hooks[event]) {

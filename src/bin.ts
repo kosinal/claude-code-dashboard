@@ -32,7 +32,13 @@ function parseArgs(argv: string[]): {
       noHooks = true;
     } else if (arg === "--no-open") {
       noOpen = true;
-    } else if (arg === "install" || arg === "uninstall" || arg === "stop" || arg === "restart") {
+    } else if (
+      arg === "install" ||
+      arg === "uninstall" ||
+      arg === "stop" ||
+      arg === "restart" ||
+      arg === "hook"
+    ) {
       command = arg;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
@@ -58,6 +64,7 @@ Usage:
   claude-code-dashboard uninstall      Remove persistent dashboard
   claude-code-dashboard stop           Stop the running dashboard
   claude-code-dashboard restart        Restart the running dashboard
+  claude-code-dashboard hook           Read stdin and POST to dashboard (used by hooks)
 
 Options:
   --port <number>   Port to use (default: ${DEFAULT_PORT})
@@ -219,6 +226,33 @@ function main(): void {
       console.error("Uninstall failed:", err);
       process.exit(1);
     });
+    return;
+  }
+
+  if (command === "hook") {
+    // Read stdin, POST to dashboard server, always exit 0
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (chunk) => chunks.push(chunk));
+    process.stdin.on("end", () => {
+      const body = Buffer.concat(chunks).toString("utf-8");
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/hook",
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          timeout: 5000,
+        },
+        (res) => {
+          res.resume();
+        },
+      );
+      req.on("error", () => {});
+      req.on("timeout", () => req.destroy());
+      req.end(body);
+    });
+    process.stdin.on("error", () => {});
     return;
   }
 
