@@ -1,6 +1,6 @@
 {
   "name": "@kosinal/claude-code-dashboard",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "type": "module",
   "description": "Real-time browser dashboard for Claude Code session states",
   "bin": {
