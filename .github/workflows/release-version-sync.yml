@@ -23,7 +23,7 @@ jobs:
     env:
       BRANCH: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH }}
 
