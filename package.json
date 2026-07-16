@@ -22,7 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.4",
     "tsup": "^8.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.0"
   },
   "keywords": [
     "claude",
